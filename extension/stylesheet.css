@@ -1,63 +1,55 @@
 .matci-notch {
     background-color: #111214;
     color: #f5f5f7;
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-top-width: 0;
     border-radius: 0 0 28px 28px;
-    padding: 6px 18px 8px;
-    spacing: 9px;
-    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.42);
+    padding: 8px 16px 8px;
+    spacing: 8px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
 }
-.matci-notch.matci-expanded { padding: 14px 20px 17px; spacing: 12px; }
+.matci-notch.matci-expanded { padding: 16px 20px 16px; spacing: 12px; }
 .matci-header, .matci-brand, .matci-header-tools, .matci-controls,
 .matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
 .matci-reason-row, .matci-panel-status { spacing: 8px; }
-.matci-footnote-row { min-height: 18px; spacing: 7px; }
-.matci-footnote-row StIcon { color: #8c9098; }
+.matci-footnote-row { min-height: 18px; spacing: 8px; }
+.matci-footnote-row StIcon { color: #a8abb2; }
 .matci-header { min-height: 34px; }
-.matci-brand { spacing: 7px; }
-.matci-title { color: #f5f5f7; font-weight: 700; font-size: 12px; letter-spacing: 0.02em; }
-.matci-live-dot { color: #30d158; }
+.matci-brand { spacing: 8px; }
+.matci-title { color: #f5f5f7; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; }
 .matci-state-note, .matci-state-error {
     font-size: 11px;
     font-weight: 600;
 }
 .matci-state-note { color: #a8abb2; }
-.matci-state-error { color: #ff453a; }
-.matci-state-healthy { color: #30d158; font-size: 11px; }
-.matci-count {
-    border-radius: 10px;
-    padding: 2px 7px;
-    font-size: 10px;
-    font-weight: 700;
-}
+.matci-state-error { color: #ff5f56; }
 .matci-metric-row { min-height: 42px; spacing: 12px; }
-.matci-metric { color: #f5f5f7; font-size: 30px; font-weight: 700; }
+.matci-metric { color: #f5f5f7; font-size: 30px; font-weight: 600; }
 .matci-metric-detail { color: #b5b7be; font-size: 12px; }
 .matci-meter-track { border-radius: 3px; background-color: #292b30; }
-.matci-meter-fill { border-radius: 3px; background-color: #0a84ff; }
+.matci-meter-fill { border-radius: 3px; background-color: #b5b7be; }
 .matci-meter-rest { background-color: transparent; }
 .matci-footnote { color: #a8abb2; font-size: 11px; }
 .matci-scroll { min-height: 0px; max-height: 160px; }
-.matci-list { spacing: 5px; padding-top: 4px; }
+.matci-list { spacing: 8px; padding-top: 4px; }
 .matci-section { min-height: 30px; }
 .matci-section-title { color: #f5f5f7; font-size: 12px; font-weight: 700; }
-.matci-count { color: #d2d2d7; background-color: #25272c; }
-.matci-app-row { min-height: 42px; padding: 4px 7px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+.matci-app-row { min-height: 42px; padding: 4px 7px; }
 .matci-app-select, .matci-app-protected { min-width: 225px; padding: 6px 8px; border-radius: 12px; background-color: transparent; }
 .matci-app-select:hover { background-color: rgba(255, 255, 255, 0.07); }
-.matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px #0a84ff; }
-.matci-app-select StIcon { color: #8ec5ff; }
+.matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
+.matci-app-select StIcon { color: #8ab4ff; }
 .matci-app-protected { color: #b5b7be; }
-.matci-app-protected StIcon, .matci-reason-row StIcon { color: #ff9f0a; }
+.matci-app-protected StIcon, .matci-reason-row StIcon { color: #ffb84d; }
 .matci-app-name { color: #f5f5f7; font-size: 12px; }
 .matci-app-icon { border-radius: 4px; }
+.matci-app-values { spacing: 4px; }
 .matci-app-metric { color: #b5b7be; font-size: 11px; }
+.matci-app-input { color: #a8abb2; font-size: 11px; }
 .matci-reason-row { padding-left: 10px; }
-.matci-protected { color: #ffcc66; font-size: 11px; }
-.matci-review-row { color: #d2d2d7; font-size: 12px; }
+.matci-protected { color: #ffb84d; font-size: 11px; }
+.matci-review-row { color: #b5b7be; font-size: 12px; }
 .matci-empty { color: #b5b7be; font-size: 12px; padding: 12px 0; }
-.matci-status { color: #ffcc66; font-size: 11px; }
+.matci-status { color: #b5b7be; font-size: 11px; }
+.matci-status-error { color: #ff5f56; font-size: 11px; }
 .matci-controls { min-height: 38px; }
 .matci-button, .matci-icon-button {
     color: #f5f5f7;
@@ -68,10 +60,31 @@
 .matci-icon-button { width: 34px; height: 34px; border-radius: 17px; }
 .matci-button:hover, .matci-icon-button:hover { background-color: #303238; }
 .matci-button:active, .matci-icon-button:active { background-color: #3a3c43; }
-.matci-button:focus { box-shadow: inset 0 0 0 2px #0a84ff; }
+.matci-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: #838b97; }
-.matci-primary-button { color: #fff; background-color: #006fe6; font-weight: 700; }
-.matci-primary-button:hover { color: #fff; background-color: #0066d3; }
+.matci-primary-button { color: #f5f5f7; background-color: #006fe6; font-weight: 700; }
+.matci-primary-button:hover { color: #f5f5f7; background-color: #0066d3; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StIcon { color: #b5b7be; }
-.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #0a84ff; border-radius: 8px; }
+.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #8ab4ff; border-radius: 8px; }
+
+/* Appearance-aware system surface; exceptional states keep their semantic colors. */
+.matci-notch.matci-light { background-color: #f7f7f9; color: #18191c; }
+.matci-light .matci-title, .matci-light .matci-metric, .matci-light .matci-section-title,
+.matci-light .matci-app-name, .matci-light .matci-review-row { color: #18191c; }
+.matci-light .matci-metric-detail, .matci-light .matci-footnote, .matci-light .matci-app-metric,
+.matci-light .matci-empty, .matci-light .matci-state-note { color: #4b4d54; }
+.matci-light .matci-button, .matci-light .matci-icon-button { color: #18191c; background-color: #e9e9ed; }
+.matci-light .matci-button:hover, .matci-light .matci-icon-button:hover,
+.matci-light .matci-app-select:hover { background-color: rgba(0, 0, 0, 0.06); }
+.matci-light .matci-primary-button { color: #f5f5f7; background-color: #006fe6; }
+.matci-light .matci-primary-button:hover { color: #f5f5f7; background-color: #0066d3; }
+.matci-light .matci-meter-track { background-color: #e9e9ed; }
+.matci-light .matci-meter-fill { background-color: #4b4d54; }
+.matci-light .matci-state-error { color: #b42318; }
+.matci-light .matci-protected { color: #8a4b00; }
+.matci-light .matci-button:focus, .matci-light .matci-icon-button:focus, .matci-light .matci-app-select:focus { box-shadow: inset 0 0 0 2px #0057b8; }
+.matci-light .matci-app-select StIcon { color: #4b4d54; }
+.matci-light .matci-status { color: #4b4d54; }
+.matci-light .matci-status-error { color: #b42318; }
+.matci-light .matci-app-input { color: #62656d; }

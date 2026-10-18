@@ -1,0 +1,90 @@
+.matci-notch {
+    background-color: {{color.surfacePrimary}};
+    color: {{color.labelPrimary}};
+    border-radius: 0 0 {{radius.surface}}px {{radius.surface}}px;
+    padding: {{spacing.sm}}px {{spacing.lg}}px {{spacing.sm}}px;
+    spacing: {{spacing.sm}}px;
+    box-shadow: {{shadow.surface}};
+}
+.matci-notch.matci-expanded { padding: {{spacing.lg}}px {{spacing.between}}px {{spacing.lg}}px; spacing: {{spacing.md}}px; }
+.matci-header, .matci-brand, .matci-header-tools, .matci-controls,
+.matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
+.matci-reason-row, .matci-panel-status { spacing: 8px; }
+.matci-footnote-row { min-height: 18px; spacing: {{spacing.sm}}px; }
+.matci-footnote-row StIcon { color: {{color.labelTertiary}}; }
+.matci-header { min-height: 34px; }
+.matci-brand { spacing: {{spacing.sm}}px; }
+.matci-title { color: {{color.labelPrimary}}; font-weight: 600; font-size: {{typography.primary}}px; letter-spacing: 0.02em; }
+.matci-state-note, .matci-state-error {
+    font-size: {{typography.caption}}px;
+    font-weight: 600;
+}
+.matci-state-note { color: {{color.labelTertiary}}; }
+.matci-state-error { color: {{color.accentCritical}}; }
+.matci-metric-row { min-height: 42px; spacing: {{spacing.md}}px; }
+.matci-metric { color: {{color.labelPrimary}}; font-size: {{typography.hero}}px; font-weight: 600; }
+.matci-metric-detail { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
+.matci-meter-track { border-radius: 3px; background-color: {{color.surfaceTrack}}; }
+.matci-meter-fill { border-radius: 3px; background-color: {{color.labelSecondary}}; }
+.matci-meter-rest { background-color: transparent; }
+.matci-footnote { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
+.matci-scroll { min-height: 0px; max-height: 160px; }
+.matci-list { spacing: {{spacing.sm}}px; padding-top: 4px; }
+.matci-section { min-height: 30px; }
+.matci-section-title { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; font-weight: 700; }
+.matci-app-row { min-height: 42px; padding: 4px 7px; }
+.matci-app-select, .matci-app-protected { min-width: 225px; padding: 6px 8px; border-radius: 12px; background-color: transparent; }
+.matci-app-select:hover { background-color: {{color.separatorSubtle}}; }
+.matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
+.matci-app-select StIcon { color: {{color.focus}}; }
+.matci-app-protected { color: {{color.labelSecondary}}; }
+.matci-app-protected StIcon, .matci-reason-row StIcon { color: {{color.accentWarning}}; }
+.matci-app-name { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; }
+.matci-app-icon { border-radius: 4px; }
+.matci-app-values { spacing: {{spacing.xs}}px; }
+.matci-app-metric { color: {{color.labelSecondary}}; font-size: {{typography.caption}}px; }
+.matci-app-input { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
+.matci-reason-row { padding-left: 10px; }
+.matci-protected { color: {{color.accentWarning}}; font-size: {{typography.caption}}px; }
+.matci-review-row { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
+.matci-empty { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; padding: 12px 0; }
+.matci-status { color: {{color.labelSecondary}}; font-size: {{typography.caption}}px; }
+.matci-status-error { color: {{color.accentCritical}}; font-size: {{typography.caption}}px; }
+.matci-controls { min-height: 38px; }
+.matci-button, .matci-icon-button {
+    color: {{color.labelPrimary}};
+    border-radius: 14px;
+    background-color: {{color.surfaceElevated}};
+}
+.matci-button { padding: 7px 12px; font-size: {{typography.secondary}}px; }
+.matci-icon-button { width: {{control.size}}px; height: {{control.size}}px; border-radius: 17px; }
+.matci-button:hover, .matci-icon-button:hover { background-color: {{color.surfaceHover}}; }
+.matci-button:active, .matci-icon-button:active { background-color: {{color.surfacePressed}}; }
+.matci-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
+.matci-button:insensitive, .matci-icon-button:insensitive { color: {{color.labelDisabled}}; }
+.matci-primary-button { color: {{color.labelPrimary}}; background-color: {{color.actionPrimary}}; font-weight: 700; }
+.matci-primary-button:hover { color: {{color.labelPrimary}}; background-color: {{color.actionHover}}; }
+.matci-panel-status { spacing: 4px; }
+.matci-panel-status StIcon { color: {{color.labelSecondary}}; }
+.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px {{color.focus}}; border-radius: 8px; }
+
+/* Appearance-aware system surface; exceptional states keep their semantic colors. */
+.matci-notch.matci-light { background-color: {{color.surfacePrimaryLight}}; color: {{color.labelPrimaryLight}}; }
+.matci-light .matci-title, .matci-light .matci-metric, .matci-light .matci-section-title,
+.matci-light .matci-app-name, .matci-light .matci-review-row { color: {{color.labelPrimaryLight}}; }
+.matci-light .matci-metric-detail, .matci-light .matci-footnote, .matci-light .matci-app-metric,
+.matci-light .matci-empty, .matci-light .matci-state-note { color: {{color.labelSecondaryLight}}; }
+.matci-light .matci-button, .matci-light .matci-icon-button { color: {{color.labelPrimaryLight}}; background-color: {{color.surfaceElevatedLight}}; }
+.matci-light .matci-button:hover, .matci-light .matci-icon-button:hover,
+.matci-light .matci-app-select:hover { background-color: {{color.hoverWashLight}}; }
+.matci-light .matci-primary-button { color: {{color.labelPrimary}}; background-color: {{color.actionPrimary}}; }
+.matci-light .matci-primary-button:hover { color: {{color.labelPrimary}}; background-color: {{color.actionHover}}; }
+.matci-light .matci-meter-track { background-color: {{color.surfaceElevatedLight}}; }
+.matci-light .matci-meter-fill { background-color: {{color.labelSecondaryLight}}; }
+.matci-light .matci-state-error { color: {{color.accentCriticalLight}}; }
+.matci-light .matci-protected { color: {{color.accentWarningLight}}; }
+.matci-light .matci-button:focus, .matci-light .matci-icon-button:focus, .matci-light .matci-app-select:focus { box-shadow: inset 0 0 0 2px {{color.focusLight}}; }
+.matci-light .matci-app-select StIcon { color: {{color.labelSecondaryLight}}; }
+.matci-light .matci-status { color: {{color.labelSecondaryLight}}; }
+.matci-light .matci-status-error { color: {{color.accentCriticalLight}}; }
+.matci-light .matci-app-input { color: {{color.labelTertiaryLight}}; }

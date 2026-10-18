@@ -8,6 +8,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
 import {DockParticipant} from './notchDock.js';
+import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
 import {protection, appView, keyOf, interactionAge} from './policy.js';
 
@@ -37,6 +38,7 @@ export default class Matci extends Extension {
         this._roleButtons = new Map();
         this._sleeping = false;
         this._selected = new Set();
+        this._renderedExpanded = false;
         this._message = '메모리 관측 연결 중';
         this._failures = this._goodSamples = 0;
         this._restartTimer = this._eventTimer = 0;
@@ -106,6 +108,8 @@ export default class Matci extends Extension {
             if (key === 'mode') this._restartWorker();
             else { this._message = '설정 변경 · 목록을 다시 확인하세요.'; this._render(); }
         });
+        this._connect(this._interface, 'changed::color-scheme', () => this._render());
+        this._connect(this._interface, 'changed::gtk-theme', () => this._render());
         this._sleepSubscription = Gio.DBus.system.signal_subscribe('org.freedesktop.login1',
             'org.freedesktop.login1.Manager', 'PrepareForSleep', '/org/freedesktop/login1', null,
             Gio.DBusSignalFlags.NONE, (_c, _s, _p, _i, _n, args) => {
@@ -159,13 +163,14 @@ export default class Matci extends Extension {
         if (!this._enabled || this._shellEnding || !this._dock) return;
         const visible = this._settings.get_boolean('show-notch') && this._expanded && !this._sleeping && !Main.overview.visible &&
             !Main.sessionMode.isLocked && !(this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen);
-        const width = Math.min(500, Math.max(1, (this._monitor()?.width ?? 800) - 24));
+        const width = Math.min(DESIGN.geometry.matciExpanded, Math.max(1, (this._monitor()?.width ?? 800) - 24));
         const height = this._expanded ? (this._contentHeight ?? 240) : 1;
         const changed = this._geometry?.width !== width || this._geometry?.height !== height;
         if (changed) {
             this._root.remove_all_transitions();
-            this._root.ease({width, height, duration: this._interface.get_boolean('enable-animations') ? 280 : 0,
-                mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+            this._root.ease({width, height, duration: this._interface.get_boolean('enable-animations') ?
+                (this._expanded ? DESIGN.motion.expand : DESIGN.motion.collapse) : 0,
+            mode: Clutter.AnimationMode[this._expanded ? DESIGN.motion.expandMode : DESIGN.motion.collapseMode]});
         }
         this._geometry = {width, height};
         // The coordinator owns visibility and placement, including collision fallback.
@@ -199,7 +204,7 @@ export default class Matci extends Extension {
     _iconButton(iconName, accessibleName, action, sensitive = true, role = null) {
         const button = new St.Button({style_class: 'matci-icon-button', can_focus: sensitive,
             reactive: sensitive, accessible_name: accessibleName,
-            child: new St.Icon({icon_name: iconName, icon_size: 16})});
+            child: new St.Icon({icon_name: iconName, icon_size: DESIGN.control.icon})});
         this._tagRole(button, role);
         button.connect('clicked', action);
         return button;
@@ -282,6 +287,12 @@ export default class Matci extends Extension {
         for (const child of this._root.get_children()) child.destroy();
         this._root.remove_style_class_name('matci-expanded');
         if (this._expanded) this._root.add_style_class_name('matci-expanded');
+        const opening = this._expanded && !this._renderedExpanded;
+        const lightAppearance = this._interface.get_string('color-scheme') === 'prefer-light' ||
+            (this._interface.get_string('color-scheme') === 'default' &&
+                !this._interface.get_string('gtk-theme').toLowerCase().includes('dark'));
+        this._root.remove_style_class_name('matci-light');
+        if (lightAppearance) this._root.add_style_class_name('matci-light');
         this._updatePanel();
         const snapshot = this._snapshot;
         const memory = snapshot?.memory;
@@ -289,17 +300,12 @@ export default class Matci extends Extension {
         if (this._expanded) {
             const header = new St.BoxLayout({style_class: 'matci-header'});
             const brand = new St.BoxLayout({style_class: 'matci-brand'});
-            brand.add_child(new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}));
-            brand.add_child(this._label('RAM', 'matci-title'));
+            brand.add_child(this._label('메모리', 'matci-title'));
             const stateText = demo ? '시연' : this._versionMismatch ? '업데이트 필요' :
                 snapshot?.health === 'error' ? '연결 오류' : snapshot?.health === 'ok' ? '' : '연결 중';
             if (stateText) {
                 brand.add_child(this._label(stateText,
                     this._versionMismatch || snapshot?.health === 'error' ? 'matci-state-error' : 'matci-state-note'));
-            } else {
-                brand.add_child(new St.Icon({icon_name: 'media-record-symbolic', icon_size: 9,
-                    style_class: 'matci-live-dot', accessible_name: '실시간 관측 정상'}));
-                brand.add_child(this._label('정상', 'matci-state-healthy'));
             }
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
@@ -317,7 +323,7 @@ export default class Matci extends Extension {
             metric.add_child(memoryDetail);
             this._root.add_child(metric);
             const ratio = Number.isFinite(memory?.used_ratio) ? Math.max(0, Math.min(1, memory.used_ratio)) : 0;
-            const innerWidth = Math.max(1, Math.min(460, (this._monitor()?.width ?? 560) - 60));
+            const innerWidth = Math.max(1, Math.min(400, (this._monitor()?.width ?? 560) - 60));
             const meter = new St.BoxLayout({style_class: 'matci-meter-track', x_expand: true, height: 4});
             meter.add_child(new St.Widget({style_class: 'matci-meter-fill', width: Math.round(innerWidth * ratio), height: 4}));
             meter.add_child(new St.Widget({style_class: 'matci-meter-rest', x_expand: true, height: 4}));
@@ -349,7 +355,6 @@ export default class Matci extends Extension {
                 const groups = this._groups(snapshot);
                 const section = new St.BoxLayout({style_class: 'matci-section'});
                 section.add_child(this._label('앱', 'matci-section-title'));
-                section.add_child(new St.Label({text: String(groups.length), style_class: 'matci-count', x_expand: false}));
                 list.add_child(section);
                 for (const group of groups) {
                     const reason = this._protection(group, snapshot);
@@ -357,7 +362,7 @@ export default class Matci extends Extension {
                     const row = new St.BoxLayout({style_class: 'matci-app-row'});
                     const selected = this._selected.has(group.appId);
                     const select = new St.Button({style_class: reason ? 'matci-app-protected' : 'matci-app-select',
-                        can_focus: !reason && !this._actions.busy, reactive: !reason && !this._actions.busy,
+                        x_expand: true, can_focus: !reason && !this._actions.busy, reactive: !reason && !this._actions.busy,
                         accessible_name: `${group.name}, ${selected ? '선택됨' : '선택 안 됨'}, ${reason ?? '수동 검토 가능'}`});
                     select._matciAppId = group.appId;
                     this._rowButtons.set(group.appId, select);
@@ -371,7 +376,7 @@ export default class Matci extends Extension {
                     }
                     appContent.add_child(new St.Icon({icon_name: reason ? 'changes-prevent-symbolic' :
                         selected ? 'checkbox-checked-symbolic' : 'checkbox-symbolic', icon_size: 16}));
-                    const appName = this._label(`${group.name} · ${group.windows.length}창`, 'matci-app-name');
+                    const appName = this._label(group.name, 'matci-app-name');
                     appName.clutter_text.set_ellipsize(Pango.EllipsizeMode.END);
                     appContent.add_child(appName);
                     select.set_child(appContent);
@@ -389,7 +394,18 @@ export default class Matci extends Extension {
                     const inputAge = group.interactionAgeMs;
                     const interaction = inputAge === null ? '—' : inputAge < 60000 ?
                         `${Math.floor(inputAge / 1000)}s` : `${Math.floor(inputAge / 60000)}m`;
-                    row.add_child(this._label(`${bytes(value)} ${kinds.size === 1 ? [...kinds][0]?.toUpperCase() : '—'} · ${age} · 입력 ${interaction}`, 'matci-app-metric'));
+                    const metricBox = new St.BoxLayout({vertical: true, style_class: 'matci-app-values'});
+                    const metricLabel = this._label(`${bytes(value)} ${kinds.size === 1 ? [...kinds][0]?.toUpperCase() : '—'}`,
+                        'matci-app-metric');
+                    metricLabel.x_expand = false;
+                    metricLabel.x_align = Clutter.ActorAlign.END;
+                    metricLabel.accessible_name = `${bytes(value)}, ${kinds.size === 1 ? [...kinds][0]?.toUpperCase() : '기준 미확인'}, 관측 ${age} 전`;
+                    metricBox.add_child(metricLabel);
+                    const inputLabel = this._label(`입력 ${interaction}`, 'matci-app-input');
+                    inputLabel.x_expand = false;
+                    inputLabel.x_align = Clutter.ActorAlign.END;
+                    metricBox.add_child(inputLabel);
+                    row.add_child(metricBox);
                     list.add_child(row);
                     if (reason) {
                         const protectedRow = new St.BoxLayout({style_class: 'matci-reason-row'});
@@ -407,7 +423,7 @@ export default class Matci extends Extension {
                     this._actionStatus === 'completed' ? '창 닫힘 · RAM 재측정' : this._message;
                 list.add_child(this._label(actionText, 'matci-status'));
             } else if (this._versionMismatch || (snapshot?.health && snapshot.health !== 'ok')) {
-                list.add_child(this._label(this._message, 'matci-status'));
+                list.add_child(this._label(this._message, 'matci-status-error'));
             }
             this._root.add_child(scroll);
             const controls = new St.BoxLayout({style_class: 'matci-controls'});
@@ -426,7 +442,8 @@ export default class Matci extends Extension {
         }
         this._root.accessible_name = `matci ${demo ? '합성 시연' : '메모리'}. ${percent(memory?.used_ratio)} 사용. ${this._message}`;
         if (this._expanded) {
-            const width = Math.min(500, Math.max(1, (this._monitor()?.width ?? 800) - 24));
+            const width = Math.min(DESIGN.geometry.matciExpanded,
+                Math.max(1, (this._monitor()?.width ?? 800) - 24));
             const contentWidth = Math.max(1, width - 36);
             const children = this._root.get_children();
             const childHeight = children.reduce((sum, child) => {
@@ -437,6 +454,14 @@ export default class Matci extends Extension {
                 Math.ceil(childHeight + Math.max(0, children.length - 1) * 8 + 27)));
         } else this._contentHeight = 1;
         this._visibility();
+        if (opening && this._interface.get_boolean('enable-animations')) {
+            for (const child of this._root.get_children()) {
+                child.opacity = 0;
+                child.ease({opacity: 255, duration: DESIGN.motion.response,
+                    mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+            }
+        }
+        this._renderedExpanded = this._expanded;
         if (this._expanded && previousScroll > 0) {
             const scroll = this._scrollView;
             let attempts = 0;
