@@ -23,12 +23,13 @@ python3 tools/doctor.py --output local-diagnostics/doctor.json
 python3 -m unittest discover -s tests -v
 glib-compile-schemas --strict --dry-run extension/schemas
 python3 tools/install_extension.py
-# 로그아웃·로그인 후
 gnome-extensions enable matci@local
 gnome-extensions prefs matci@local
 ```
 
-업데이트는 `python3 tools/install_extension.py --upgrade`, 직전 버전 복구는 `--rollback`. 사용자 설정·DB는 확장 설치와 별도다. Archsport도 공존 버전으로 업데이트해야 공유 배치가 적용된다.
+업데이트는 `python3 tools/install_extension.py --upgrade`, 직전 버전 복구는 `--rollback`. 사용자 설정·DB는 확장 설치와 별도다. Archsport도 공존 버전으로 업데이트해야 공유 배치가 적용된다. 업데이트 뒤 `gnome-extensions enable matci@local`로 켠다. 이미 Shell에 불러온 확장은 다른 버전 코드를 현재 세션에서 다시 읽지 않을 수 있으니 `gnome-extensions info matci@local`의 버전이 바뀌지 않으면 다음 사용자 세션 진입 뒤 새 코드가 적용된다.
+
+matci는 평소 상단 패널의 RAM 항목만 보인다. 상세 메모리 창은 패널 항목을 눌러 열고 닫는다. 상세 창을 열면 GNOME 작업 공간이 노치 높이만큼 줄어 앱 창이 가려지지 않게 한다.
 
 ```bash
 # 확장을 끈 상태에서 CLI를 분리 검사한다(기본 state에는 worker 1개만 허용).

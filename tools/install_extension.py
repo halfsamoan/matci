@@ -77,6 +77,8 @@ def main():
         if parked and not target.exists():
             parked.rename(target)
         raise
+    if parked:
+        parked.rename(backups / f'parked-{backup.name}')
     print(f'설치됨: {target}')
     print('로그아웃·로그인 후 gnome-extensions enable matci@local')
     print('설정창: gnome-extensions prefs matci@local')

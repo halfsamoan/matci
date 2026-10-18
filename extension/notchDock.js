@@ -1,5 +1,6 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {layoutNotches, canClaim} from './dockModel.js';
 
@@ -30,9 +31,13 @@ function getDock() {
                     const participant = this.participants.get(placement.id);
                     participant.actor.visible = !placement.fallback;
                     if (!placement.fallback) {
-                        const duration = participant.animations.get_boolean('enable-animations') ? 320 : 0;
-                        participant.actor.ease({x: placement.x, y: placement.y, duration,
-                            mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+                        const target = `${placement.x}:${placement.y}`;
+                        if (participant.targetPosition !== target) {
+                            participant.targetPosition = target;
+                            const duration = participant.animations.get_boolean('enable-animations') ? 320 : 0;
+                            participant.actor.ease({x: placement.x, y: placement.y, duration,
+                                mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+                        }
                     }
                     participant.onPlacement?.(placement);
                 }
@@ -52,6 +57,7 @@ export class DockParticipant {
         this.onYield = onYield;
         this.onPlacement = onPlacement;
         this.animations = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this.targetPosition = null;
         this.state = {width: 360, height: 46, visible: false, expanded: false};
         this.dock = getDock();
         this.dock.participants.set(id, this);
@@ -84,7 +90,8 @@ export class DockParticipant {
         const dock = this.dock;
         dock.participants.delete(this.id);
         if (dock.active?.id === this.id) dock.active = null;
-        if (!dock.participants.size) delete Main.layoutManager[KEY];
+        if (!dock.participants.size)
+            delete Main.layoutManager[KEY];
         else dock.reflow();
         this.dock = this.actor = this.animations = null;
     }

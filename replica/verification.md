@@ -1,5 +1,18 @@
 # 검증 기록
 
+## 2026-10-18 Ubuntu 26.04.1 사용자 세션 적용
+
+- ASUS Vivobook M6500QC, GNOME Shell 50.1, Wayland, eDP-1 논리 1728×972를 확인했다.
+- 이 Ubuntu에서 Python 42/42, Node 15/15, GSettings schema strict dry-run을 통과했다. worker smoke는 실제 `/proc`에서 live/partial, 유효한 메모리 수치, PSI available을 보고했다. GNOME 화면 검증과 다르다.
+- 재활성화 시 배치 상태를 초기화한 버전 2를 먼저 설치하고 자동 시작 목록에 UUID를 추가했다. 재로그인 후 GNOME50.1에서 `ACTIVE`와 기본 노치 표시를 확인했다. P0-01의 버전/활성 상태만 확인됐으며 P0-02–15는 각 조건별 검수가 남았다.
+
+### 재로그인 후 초기 화면 진단
+
+- 두 확장은 GNOME Shell 50.1에서 `ACTIVE`로 로드됐고 사용자 스크린샷에서 패널 아래 두 노치가 보였다. Archsport worker 1개는 키 없음 상태를 표시했다.
+- matci는 첫 snapshot을 SQLite에 저장했지만 곧 종료를 반복해 노치에 `—`가 남았다. 동일한 GJS 1.88.0 환경에서 `TextDecoder.decode(chunk, {stream: true})`가 `stream option` 미지원 오류를 내는 것을 재현했다. worker 출력은 `ensure_ascii=True` JSON이므로 chunk별 기본 decode로 수정했다.
+- upgrade 중 이전 설치를 확장 스캔 경로에 임시 폴더로 남겨 Shell 로그에 UUID 불일치 오류가 발생했다. 설치 스크립트가 성공 후 해당 폴더를 상태 백업 경로로 옮기도록 수정했다.
+- 수정본 버전 3을 설치했다. GJS가 43,023바이트의 실제 live snapshot(127개 프로세스, 유효한 메모리 비율)을 여러 chunk에서 읽고 JSON으로 파싱하는 별도 probe는 통과했다. 현재 Shell은 메타데이터 버전 2를 캐시하고 재로드 DBus 메서드가 구현되지 않아, 버전 3의 실제 노치/worker 수명은 다음 로그인 후 확인해야 한다.
+
 ## 구현 후 최신 결과 — 2026-10-18
 
 | 실행 | 실제 결과 | 검증 범위 |
@@ -42,3 +55,9 @@ proof-first: core 초기 missing module, package 초기 missing module, dock 초
 노치 source manifest는 사용자 Archsport 파일 hash와 발췌이며 GNOME 작동 통과 증거가 아니다. 사진은 참고 전용으로 저장하고 제품 패키지에서는 제외한다.
 
 Linux 기술 조사와 아키텍처의 독립 검토에서 지표별 freshness, 앱 view 저장 경로, 보호 규칙 원본, 요청 전 receipt ack, 중단 기록 처리를 보완했다. 이 검토도 앱 실행 검수로 세지 않는다. 설계 검증 명령은 표준 라이브러리만 사용하므로 Linux에서 `python3 tools/verify_planning.py`로 반복할 수 있다.
+
+## 2026-10-18 overlay·레이아웃 업데이트
+
+- Archsport와 공유 배치에서 작업영역 예약 actor를 제거했다. 노치는 기존 앱 창을 밀지 않는 chrome 오버레이이며 빈 배경은 click-through다. 앱 목록 길이와 경기 데이터에 따라 높이를 측정하고 아이콘·짧은 상태 표시를 사용한다.
+- 버전 6 파일을 사용자 확장 경로에 설치했다. GNOME 50.1은 프로세스 안에서 이전 버전 5를 유지했고 D-Bus `ReloadExtension`은 `UnknownMethod: not implemented`였다. 재활성화 시 이전 status-area role 충돌로 현재 `matci@local`이 `ERROR`가 됐다. 소스에는 status-area 항목 정리 방어 코드를 추가했지만, 현재 Shell 캐시 때문에 아직 실행되지 않았다.
+- matci Python 42/42, Node test 15/15, JS syntax, strict schema dry-run 통과. GNOME 50.1의 새 코드 렌더링·click-through·창 좌표 검수는 다음 세션에서 남아 있다. 현재 세션을 로그아웃하거나 Shell 재시작하지 않았다.
