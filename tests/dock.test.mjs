@@ -9,8 +9,8 @@ test('two islands form one centered group below panel without overlap', () => {
         {id: 'memory', width: 220, height: 46, order: 1}], monitor);
     assert.equal(positions.length, 2);
     assert.equal(positions[0].y, 32);
-    assert.equal(positions[1].x - positions[0].x - positions[0].width, 8);
-    assert.equal(positions[0].x + (360 + 220 + 8) / 2, 740);
+    assert.equal(positions[1].x - positions[0].x - positions[0].width, 6);
+    assert.equal(positions[0].x + (360 + 220 + 6) / 2, 740);
 });
 test('narrow display preserves active participant and falls back companion', () => {
     const positions = layoutNotches([{id: 'sports', width: 500, height: 250, order: 0, active: true},
@@ -30,7 +30,7 @@ test('manual review is not interrupted by automatic events', () => {
 });
 
 test('shared dock protocol and manual tie use last-toggle ownership', () => {
-    assert.equal(DOCK_PROTOCOL, 3);
+    assert.equal(DOCK_PROTOCOL, 4);
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 

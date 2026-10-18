@@ -27,7 +27,7 @@ export default class MatciPreferences extends ExtensionPreferences {
             adjustment: new Gtk.Adjustment({lower: 50, upper: 99, step_increment: 1, page_increment: 5}), value: settings.get_int('threshold')});
         threshold.connect('notify::value', () => settings.set_int('threshold', Math.round(threshold.value)));
         source.add(threshold);
-        const notch = new Adw.PreferencesGroup({title: '두 노치', description: 'Archsport와 같은 320ms 모션. 패널 아래에서 나란히 배치하며 공간이 부족하면 RAM 패널 버튼으로 진입합니다. 시스템 애니메이션 끄기를 따릅니다.'});
+        const notch = new Adw.PreferencesGroup({title: '두 노치', description: 'Archsport와 같은 모션. 패널 아래에 나란히 배치하며 공간이 부족하면 RAM 패널 버튼으로 엽니다. 시스템 애니메이션 설정을 따릅니다.'});
         page.add(notch);
         switchRow(notch, 'show-notch', '상세 오버레이 표시');
         switchRow(notch, 'hide-fullscreen', '전체화면에서 숨기기');

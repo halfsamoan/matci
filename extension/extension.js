@@ -164,7 +164,7 @@ export default class Matci extends Extension {
         const changed = this._geometry?.width !== width || this._geometry?.height !== height;
         if (changed) {
             this._root.remove_all_transitions();
-            this._root.ease({width, height, duration: this._interface.get_boolean('enable-animations') ? 320 : 0,
+            this._root.ease({width, height, duration: this._interface.get_boolean('enable-animations') ? 280 : 0,
                 mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
         }
         this._geometry = {width, height};
@@ -291,10 +291,16 @@ export default class Matci extends Extension {
             const brand = new St.BoxLayout({style_class: 'matci-brand'});
             brand.add_child(new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}));
             brand.add_child(this._label('RAM', 'matci-title'));
-            const state = demo ? 'DEMO' : this._versionMismatch ? 'UPDATE' : snapshot?.health === 'ok' ? 'LIVE' :
-                snapshot?.health === 'error' ? 'STALE' : 'SYNC';
-            brand.add_child(this._label(state,
-                demo ? 'matci-state-demo' : state === 'LIVE' ? 'matci-state-live' : 'matci-state-stale'));
+            const stateText = demo ? '시연' : this._versionMismatch ? '업데이트 필요' :
+                snapshot?.health === 'error' ? '연결 오류' : snapshot?.health === 'ok' ? '' : '연결 중';
+            if (stateText) {
+                brand.add_child(this._label(stateText,
+                    this._versionMismatch || snapshot?.health === 'error' ? 'matci-state-error' : 'matci-state-note'));
+            } else {
+                brand.add_child(new St.Icon({icon_name: 'media-record-symbolic', icon_size: 9,
+                    style_class: 'matci-live-dot', accessible_name: '실시간 관측 정상'}));
+                brand.add_child(this._label('정상', 'matci-state-healthy'));
+            }
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
             tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this._openPreferences(), true, 'settings'));
@@ -303,8 +309,12 @@ export default class Matci extends Extension {
             this._root.add_child(header);
 
             const metric = new St.BoxLayout({style_class: 'matci-metric-row'});
-            metric.add_child(this._label(percent(memory?.used_ratio), 'matci-metric'));
-            metric.add_child(this._label(`가용 ${bytes(memory?.available_bytes)} · 전체 ${bytes(memory?.total_bytes)}`, 'matci-metric-detail'));
+            const usedMetric = this._label(percent(memory?.used_ratio), 'matci-metric');
+            usedMetric.x_expand = false;
+            metric.add_child(usedMetric);
+            const memoryDetail = this._label(`가용 ${bytes(memory?.available_bytes)} · 전체 ${bytes(memory?.total_bytes)}`, 'matci-metric-detail');
+            memoryDetail.x_align = Clutter.ActorAlign.END;
+            metric.add_child(memoryDetail);
             this._root.add_child(metric);
             const ratio = Number.isFinite(memory?.used_ratio) ? Math.max(0, Math.min(1, memory.used_ratio)) : 0;
             const innerWidth = Math.max(1, Math.min(460, (this._monitor()?.width ?? 560) - 60));

@@ -4,7 +4,7 @@
 
 2026-10-18 일반 웹 `matci linux app` 검색을 실행했으나 검색 부재는 이용 가능성의 증거가 아니다. USPTO/EUIPO/WIPO/한국 상표·도메인·App Store/Play·소셜 핸들은 미확인이다. 개인 개발을 시작하는 데 이 확인이 선행 의존성은 아니며 공개 출시 전 별도 확인한다.
 
-색은 어두운 사용자 노치 바탕에 amber accent `#e7b86d`를 사용한다. 원본 사진의 형광 연두 브랜드를 가져오지 않는다. Archsport 노치 동작과 바탕색은 사용자 요청에 따른 재사용이다. 폰트는 시스템 Ubuntu Sans/Noto Sans KR fallback, 원본 폰트나 로고 파일은 가져오지 않는다.
+네이티브 노치는 graphite `#111214`, 기본 동작은 system blue `#006fe6`, 정상 수집은 green `#30d158`, 경고는 orange `#ff9f0a`로 표시한다. 원본 Mint for Mac 사진의 색·로고를 브랜드로 복제하지 않는다. Archsport와 공유하는 노치 위치·모션은 사용자 요청에 따른 네이티브 재사용이다. 폰트는 시스템 Ubuntu Sans/Noto Sans KR fallback을 사용한다.
 
 로고 방향은 작은 빈 공간과 상태 점을 조합한 단순한 자체 심볼+matci 워드마크. Mint의 잎 모양이나 네온 칩을 따지 않는다. 향후 16px 상태 아이콘·SVG·256/1024 PNG를 제작하고 작은 크기에서 검사한다. 현재 로고 제작은 하지 않았다.
 
