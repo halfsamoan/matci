@@ -18,6 +18,7 @@ const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
 export default class Matci extends Extension {
     enable() {
         this._enabled = true;
+        this._shellEnding = false;
         this._clearPendingRelogin();
         this._generation = 0;
         this._signals = [];
@@ -78,6 +79,9 @@ export default class Matci extends Extension {
                 toggle() : Clutter.EVENT_PROPAGATE);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._dock = new DockParticipant({id: this.uuid, actor: this._root, monitor: () => this._monitor(), order: 1,
+            triggerActor: () => this._indicator,
+            onShellShutdown: () => this._beginShellShutdown(),
+            onOutside: () => this._collapse(false, {keepReview: true}),
             onYield: () => this._collapse(false, {keepReview: true})});
         this._actions = new CloseController({snapshot: () => this._snapshot,
             uuid: () => GLib.uuid_string_random(), now: () => this._now(),
@@ -87,6 +91,9 @@ export default class Matci extends Extension {
             delay: ms => this._delay(ms), onState: (status, message) => {
                 this._message = message; this._actionStatus = status; this._render();
             }});
+        this._connect(Main.panel, 'destroy', () => this._beginShellShutdown());
+        this._connect(this._root, 'destroy', () => this._beginShellShutdown());
+        this._connect(this._indicator, 'destroy', () => this._beginShellShutdown());
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
         this._connect(Main.panel, 'notify::height', () => this._visibility());
         this._connect(Main.overview, 'showing', () => this._visibility());
@@ -110,6 +117,24 @@ export default class Matci extends Extension {
     }
     _now() { return GLib.get_monotonic_time() / 1000; }
     _connect(object, signal, callback) { this._signals.push([object, object.connect(signal, callback)]); }
+    _beginShellShutdown() {
+        if (this._shellEnding) return;
+        this._shellEnding = true;
+        this._enabled = false;
+        this._sleeping = true;
+        this._dock?.shutdown();
+        this._stopWorker();
+        if (this._sleepSubscription) Gio.DBus.system.signal_unsubscribe(this._sleepSubscription);
+        this._sleepSubscription = 0;
+    }
+    _openPreferences() {
+        try {
+            Promise.resolve(this.openPreferences()).catch(error =>
+                console.warn(`[matci] 설정을 열지 못했습니다: ${error.message}`));
+        } catch (error) {
+            console.warn(`[matci] 설정을 열지 못했습니다: ${error.message}`);
+        }
+    }
     _clearPendingRelogin() {
         const path = GLib.build_filenamev([GLib.get_user_state_dir(), 'matci', 'pending-relogin.json']);
         try {
@@ -122,6 +147,7 @@ export default class Matci extends Extension {
         }
     }
     _updatePanel() {
+        if (!this._enabled || this._shellEnding) return;
         const value = percent(this._snapshot?.memory?.used_ratio);
         this._indicatorLabel.text = this._versionMismatch ? '!' : value;
         this._indicatorIcon.icon_name = this._versionMismatch ? 'dialog-warning-symbolic' : 'utilities-system-monitor-symbolic';
@@ -130,7 +156,7 @@ export default class Matci extends Extension {
     }
     _monitor() { return Main.layoutManager.monitors[this._settings.get_int('monitor-index')] ?? Main.layoutManager.primaryMonitor; }
     _visibility() {
-        if (!this._enabled || !this._dock) return;
+        if (!this._enabled || this._shellEnding || !this._dock) return;
         const visible = this._settings.get_boolean('show-notch') && this._expanded && !this._sleeping && !Main.overview.visible &&
             !Main.sessionMode.isLocked && !(this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen);
         const width = Math.min(500, Math.max(1, (this._monitor()?.width ?? 800) - 24));
@@ -204,7 +230,7 @@ export default class Matci extends Extension {
     }
     _groups(snapshot) {
         // A demo sample must never touch Shell windows or contain a live window token.
-        if (!snapshot || snapshot.mode !== 'live') return [];
+        if (!this._enabled || this._shellEnding || !snapshot || snapshot.mode !== 'live') return [];
         const tracker = Shell.WindowTracker.get_default();
         const appSystem = Shell.AppSystem.get_default();
         const eventTime = global.get_current_time();
@@ -242,7 +268,7 @@ export default class Matci extends Extension {
             user_protected_app_ids: this._settings.get_strv('protected-app-ids')});
     }
     _render() {
-        if (!this._enabled) return;
+        if (!this._enabled || this._shellEnding) return;
         const oldAdjustment = this._scrollAdjustment(this._scrollView);
         const oldScrollValue = Number(oldAdjustment?.value);
         const previousScroll = Number.isFinite(oldScrollValue) ? oldScrollValue : 0;
@@ -271,7 +297,7 @@ export default class Matci extends Extension {
                 demo ? 'matci-state-demo' : state === 'LIVE' ? 'matci-state-live' : 'matci-state-stale'));
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
-            tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this.openPreferences(), true, 'settings'));
+            tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this._openPreferences(), true, 'settings'));
             tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true), true, 'collapse'));
             header.add_child(tools);
             this._root.add_child(header);
@@ -628,16 +654,22 @@ export default class Matci extends Extension {
         this._stopWorker();
         if (this._sleepSubscription) Gio.DBus.system.signal_unsubscribe(this._sleepSubscription);
         this._sleepSubscription = 0;
-        for (const [object, id] of this._signals) object.disconnect(id);
+        for (const [object, id] of this._signals) {
+            try { object.disconnect(id); } catch (_error) { /* object was disposed during Shell shutdown */ }
+        }
         this._signals = [];
         this._dock?.destroy(); this._dock = null;
-        if (this._root) Main.layoutManager.removeChrome(this._root);
-        this._root?.destroy(); this._root = null;
-        if (this._indicator) {
-            if (Main.panel.statusArea[this.uuid] === this._indicator) Main.panel.statusArea[this.uuid] = null;
-            this._indicator.destroy();
-            this._indicator = null;
+        if (!this._shellEnding && this._root) {
+            try { Main.layoutManager.removeChrome(this._root); } catch (_error) {}
+            try { this._root.destroy(); } catch (_error) {}
         }
+        if (!this._shellEnding && this._indicator) {
+            try {
+                if (Main.panel.statusArea[this.uuid] === this._indicator) Main.panel.statusArea[this.uuid] = null;
+                this._indicator.destroy();
+            } catch (_error) { /* Shell already owns actor disposal */ }
+        }
+        this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = null;
         this._settings = this._interface = this._actions = null;
     }
 }

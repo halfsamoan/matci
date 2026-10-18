@@ -16,11 +16,11 @@
 .matci-footnote-row StIcon { color: #8d96a4; }
 .matci-header { min-height: 32px; }
 .matci-brand { spacing: 7px; }
-.matci-title { font-weight: 700; font-size: 11px; letter-spacing: 0.04em; }
+.matci-title { font-weight: 700; font-size: 12px; letter-spacing: 0.04em; }
 .matci-state-live, .matci-state-demo, .matci-state-stale, .matci-count {
     border-radius: 10px;
     padding: 2px 7px;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
 }
 .matci-state-live { color: #8de3c0; background-color: rgba(141, 227, 192, 0.12); }
@@ -32,7 +32,7 @@
 .matci-meter-track { border-radius: 3px; background-color: #252a32; }
 .matci-meter-fill { border-radius: 3px; background-color: #e7b86d; }
 .matci-meter-rest { background-color: transparent; }
-.matci-footnote { color: #adb5c1; font-size: 10px; }
+.matci-footnote { color: #adb5c1; font-size: 11px; }
 .matci-scroll { min-height: 0px; max-height: 150px; }
 .matci-list { spacing: 3px; padding-top: 4px; }
 .matci-section { min-height: 28px; }
@@ -47,21 +47,22 @@
 .matci-app-protected StIcon, .matci-reason-row StIcon { color: #e6c28b; }
 .matci-app-name { color: #f2f1ec; font-size: 12px; }
 .matci-app-icon { border-radius: 4px; }
-.matci-app-metric { color: #c6cbd4; font-size: 10px; }
+.matci-app-metric { color: #c6cbd4; font-size: 11px; }
 .matci-reason-row { padding-left: 10px; }
-.matci-protected { color: #e6c28b; font-size: 10px; }
-.matci-review-row { color: #d5d9e0; font-size: 11px; }
+.matci-protected { color: #e6c28b; font-size: 11px; }
+.matci-review-row { color: #d5d9e0; font-size: 12px; }
 .matci-empty { color: #c6cbd4; font-size: 12px; padding: 12px 0; }
-.matci-status { color: #f0c57a; font-size: 10px; }
+.matci-status { color: #f0c57a; font-size: 11px; }
 .matci-controls { min-height: 36px; }
 .matci-button, .matci-icon-button {
     color: #f2f1ec;
     border-radius: 12px;
     background-color: #20242b;
 }
-.matci-button { padding: 7px 12px; font-size: 11px; }
+.matci-button { padding: 7px 12px; font-size: 12px; }
 .matci-icon-button { width: 32px; height: 32px; }
 .matci-button:hover, .matci-icon-button:hover { background-color: #303640; }
+.matci-button:active, .matci-icon-button:active { background-color: #3a424d; }
 .matci-button:focus { box-shadow: inset 0 0 0 2px #e7b86d; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: #838b97; }
 .matci-primary-button { color: #16120c; background-color: #e7b86d; font-weight: 700; }
