@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "type": "snapshot",
+  "mode": "demo",
+  "sample_id": "synthetic-sample-001",
+  "session_id": "synthetic-session-only",
+  "sampled_at": "2026-10-18T03:00:00Z",
+  "monotonic_ms": 10000,
+  "boot_id": "synthetic-boot-only",
+  "health": "partial",
+  "memory": {"total_bytes": 17179869184, "available_bytes": 4294967296, "used_ratio": 0.75, "definition": "MemTotal minus MemAvailable", "observed_monotonic_ms": 10000, "age_ms": 0},
+  "pressure": {"some_avg10": null, "full_avg10": null, "availability": "unavailable"},
+  "processes": [
+    {"uid": 1000, "pid": 4242, "start_ticks": 12000, "identity_observed_monotonic_ms": 10000, "metric_kind": "pss", "memory_bytes": 268435456, "metric_observed_monotonic_ms": 5000, "metric_age_ms": 5000, "coverage": "complete", "cpu_fraction_one_core": 0.01}
+  ],
+  "warnings": ["SYNTHETIC_DATA", "PSI_UNAVAILABLE"],
+  "truncated": false
+}

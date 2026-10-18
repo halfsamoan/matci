@@ -1,0 +1,114 @@
+{
+  "source": "user Archsport repository",
+  "commit": "7aeb397cc8f736b82f75aed5010a870a8794b59a",
+  "captured_on": "2026-10-18",
+  "files": [
+    {
+      "path": "extension/extension.js",
+      "sha256": "3fa106dcb4a289cb691d37b2f50e76036c5c548df4fd7dc665678c494326034a",
+      "excerpts": [
+        {
+          "line": 86,
+          "text": "    _place() {\n        if (!this._root || !this._settings) return;\n        const monitor = this._monitor();\n        if (!monitor) return;\n        const top = monitor === Main.layoutManager.primaryMonitor ? Main.panel.height : 0;\n        this._root.set_position(Math.round(monitor.x + (monitor.width - this._root.width) / 2), monitor.y + top);\n        this._visibility();\n    }"
+        },
+        {
+          "line": 169,
+          "text": "        const width = Math.min(expanded ? 500 : 360, (this._monitor()?.width ?? 800) - 24);\n        this._root.remove_all_transitions();\n        this._root.ease({width, height: expanded ? 250 : 46,\n            duration: this._interface.get_boolean('enable-animations') ? 320 : 0,\n            mode: Clutter.AnimationMode.EASE_OUT_CUBIC, onComplete: () => this._place()});\n        this._place();\n        this._root.accessible_name = `Archsport ${source}. ${match?.home ?? ''} ${score} ${match?.away ?? ''}. ${health}`;\n        if (alert) this._timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.max(1, Math.round(this._alertDeadline - now)), () => {"
+        },
+        {
+          "line": 171,
+          "text": "        this._root.ease({width, height: expanded ? 250 : 46,\n            duration: this._interface.get_boolean('enable-animations') ? 320 : 0,\n            mode: Clutter.AnimationMode.EASE_OUT_CUBIC, onComplete: () => this._place()});\n        this._place();\n        this._root.accessible_name = `Archsport ${source}. ${match?.home ?? ''} ${score} ${match?.away ?? ''}. ${health}`;\n        if (alert) this._timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.max(1, Math.round(this._alertDeadline - now)), () => {\n            this._timer = 0; this._activeAlert = null; this._expanded = false; this._render();\n            return GLib.SOURCE_REMOVE;"
+        }
+      ]
+    },
+    {
+      "path": "extension/stylesheet.css",
+      "sha256": "a97659e150894b6c120f698dec5f001a4167db466aa3ca8645dedac56d3d3bd6",
+      "excerpts": [
+        {
+          "line": 1,
+          "text": ".archsport-notch { background-color: #080a0d; color: #f5f7fa; border-radius: 0 0 26px 26px; padding: 14px 20px; spacing: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.25); }\n.archsport-notch:focus { border: 2px solid #8de3c0; }\n.archsport-compact { spacing: 16px; }\n.archsport-team { color: #f5f7fa; font-weight: 700; font-size: 14px; }\n.archsport-score { color: #ffffff; font-size: 36px; font-weight: 800; }\n.archsport-caption { color: #b7bdc7; font-size: 12px; }\n.archsport-live { color: #8de3c0; font-size: 12px; }\n.archsport-alert { color: #8de3c0; font-size: 15px; font-weight: bold; }\n.archsport-close { color: #f5f7fa; background-color: #252b32; border-radius: 10px; padding: 6px 16px; }\n.archsport-close:focus, .archsport-close:hover { background-color: #38423c; }"
+        }
+      ]
+    },
+    {
+      "path": "web/style.css",
+      "sha256": "ef17e94986565f9928f06c6451fde96205b71a3bfefb561e24a433ff8e2c144d",
+      "excerpts": [
+        {
+          "line": 3,
+          "text": ".notch{pointer-events:auto;position:relative;width:460px;height:224px;flex:none;background:var(--notch);color:var(--on-notch);border-radius:0 0 30px 30px;box-shadow:0 16px 32px #03120d42;cursor:pointer;isolation:isolate;font-variant-numeric:tabular-nums;transition:width 420ms cubic-bezier(.22,1,.36,1),height 420ms cubic-bezier(.22,1,.36,1),border-radius 420ms;outline-offset:5px}"
+        },
+        {
+          "line": 3,
+          "text": ".notch[data-mode=compact]{width:336px;height:46px;border-radius:0 0 20px 20px}"
+        },
+        {
+          "line": 3,
+          "text": ".notch[data-mode=event]{width:460px;height:144px;border-radius:0 0 28px 28px}"
+        },
+        {
+          "line": 3,
+          "text": ".notch-compact,.notch-expanded,.notch-event{position:absolute;inset:0;transition:opacity 160ms,transform 260ms;opacity:0;pointer-events:none;visibility:hidden}"
+        },
+        {
+          "line": 3,
+          "text": ".notch[data-mode=compact] .notch-compact,.notch[data-mode=expanded] .notch-expanded,.notch[data-mode=event] .notch-event{opacity:1;pointer-events:auto;visibility:visible}"
+        },
+        {
+          "line": 3,
+          "text": ".notch[data-mode=compact] .notch-compact{transform:translateY(0)}"
+        },
+        {
+          "line": 3,
+          "text": ".notch[data-mode=expanded] .notch-expanded{transform:translateY(0);transition-delay:80ms}"
+        },
+        {
+          "line": 3,
+          "text": "body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after{animation:none!important;transition:none!important}"
+        },
+        {
+          "line": 4,
+          "text": ".notch{border:1px solid #b7bdc7}"
+        },
+        {
+          "line": 6,
+          "text": ".notch{width:calc(100vw - 55px);height:224px;max-width:460px}"
+        },
+        {
+          "line": 6,
+          "text": ".notch[data-mode=event]{width:calc(100vw - 55px);height:144px}"
+        },
+        {
+          "line": 6,
+          "text": ".notch[data-mode=compact]{width:280px}"
+        }
+      ]
+    },
+    {
+      "path": "web/tokens.css",
+      "sha256": "5dc1d5d2eb840c1dafcbe1503d694a85a7c23bf2b911d7a747165adab2ef65b7",
+      "excerpts": [
+        {
+          "line": 1,
+          "text": ":root{--bg:#f0f3ed;--text:#21382d;--muted:#576a5a;--surface:#f8faf6;--notch:#080a0d;--on-notch:#f5f7fa;--mint:#8de3c0;--focus:#286c50;--border:#d5ded2;--motion-expand:420ms;--motion-content:160ms}"
+        }
+      ]
+    },
+    {
+      "path": "web/app.js",
+      "sha256": "ced2b55466f45b4108e5b21822c4f89430fb404f3dcb7c5e89557207f3cb32d1",
+      "excerpts": [
+        {
+          "line": 43,
+          "text": "clearTimeout(eventTimer);"
+        },
+        {
+          "line": 64,
+          "text": "eventTimer = setTimeout(() => setMode('compact'), 6000);"
+        }
+      ]
+    }
+  ],
+  "scope": "source evidence only; not GNOME runtime verification"
+}

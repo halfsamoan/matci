@@ -1,0 +1,132 @@
+[
+  {
+    "fg": "text",
+    "bg": "bg",
+    "size": "normal",
+    "ratio": 17.47,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#f5f7fa",
+    "bg_hex": "#101216"
+  },
+  {
+    "fg": "text",
+    "bg": "surface",
+    "size": "normal",
+    "ratio": 15.56,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#f5f7fa",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "text",
+    "bg": "notch",
+    "size": "normal",
+    "ratio": 18.47,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#f5f7fa",
+    "bg_hex": "#080a0d"
+  },
+  {
+    "fg": "text-muted",
+    "bg": "bg",
+    "size": "normal",
+    "ratio": 9.92,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#b7bdc7",
+    "bg_hex": "#101216"
+  },
+  {
+    "fg": "text-muted",
+    "bg": "surface",
+    "size": "normal",
+    "ratio": 8.84,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#b7bdc7",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "text-muted",
+    "bg": "notch",
+    "size": "normal",
+    "ratio": 10.49,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#b7bdc7",
+    "bg_hex": "#080a0d"
+  },
+  {
+    "fg": "on-accent",
+    "bg": "accent",
+    "size": "normal",
+    "ratio": 10.19,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#16120c",
+    "bg_hex": "#e7b86d"
+  },
+  {
+    "fg": "accent",
+    "bg": "notch",
+    "size": "normal",
+    "ratio": 10.83,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#e7b86d",
+    "bg_hex": "#080a0d"
+  },
+  {
+    "fg": "warning",
+    "bg": "surface",
+    "size": "normal",
+    "ratio": 10.31,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#f0c57a",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "danger",
+    "bg": "surface",
+    "size": "normal",
+    "ratio": 8.28,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#ff9b9b",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "success",
+    "bg": "surface",
+    "size": "normal",
+    "ratio": 11.04,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#8de3c0",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "border-input",
+    "bg": "surface",
+    "size": "ui",
+    "ratio": 5.52,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#8b95a5",
+    "bg_hex": "#1b1e24"
+  },
+  {
+    "fg": "focus",
+    "bg": "notch",
+    "size": "ui",
+    "ratio": 10.83,
+    "aa": true,
+    "aaa": true,
+    "fg_hex": "#e7b86d",
+    "bg_hex": "#080a0d"
+  }
+]

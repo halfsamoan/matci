@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+local-diagnostics/
+*.db
+*.db-*
+*.sqlite*
+gschemas.compiled
+.playwright-mcp/
+node_modules/
+dist/

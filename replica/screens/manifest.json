@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-18",
+  "sequence": "attachment order, not verified video chronology",
+  "images": [
+    {
+      "id": "E01",
+      "file": "E01.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950_05.jpg",
+      "bytes": 156491,
+      "sha256": "700b5835a32949dc38494bc9126a6de592aeef932e94434887a74fb204d2a006",
+      "usage": "user-supplied research reference only; exclude from product package"
+    },
+    {
+      "id": "E02",
+      "file": "E02.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950.jpg",
+      "bytes": 183981,
+      "sha256": "b1bad34d8157c80e067e6e7016830133decb397634f6d5da89364484f5e772c7",
+      "usage": "user-supplied research reference only; exclude from product package"
+    },
+    {
+      "id": "E03",
+      "file": "E03.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950_01.jpg",
+      "bytes": 171640,
+      "sha256": "6e6216b365823357ee70f2ad02c77c09c8839bfc3c1f590c6339254eab8de0cd",
+      "usage": "user-supplied research reference only; exclude from product package"
+    },
+    {
+      "id": "E04",
+      "file": "E04.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950_02.jpg",
+      "bytes": 175993,
+      "sha256": "29afc8d3ea3059c9e024cc124856901a922f0acc70e7d8dce5f47b49e740d784",
+      "usage": "user-supplied research reference only; exclude from product package"
+    },
+    {
+      "id": "E05",
+      "file": "E05.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950_03.jpg",
+      "bytes": 169901,
+      "sha256": "cbf2d0f41a8ed573b8a0db4ff400436fec1c9b878db417fc6e9e301bb2282260",
+      "usage": "user-supplied research reference only; exclude from product package"
+    },
+    {
+      "id": "E06",
+      "file": "E06.jpg",
+      "source_filename": "KakaoTalk_20261018_115356950_04.jpg",
+      "bytes": 171401,
+      "sha256": "cd09da950307f2a774c48ee64ef27e45198d64a26b8ce9aef8c9b385e68dcc84",
+      "usage": "user-supplied research reference only; exclude from product package"
+    }
+  ]
+}
