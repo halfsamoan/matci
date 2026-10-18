@@ -1,12 +1,12 @@
 feature,area,priority,original,clone,notes
-전체 메모리 상태 표시,memory,must,yes,no,F02 S02; MemAvailable 기반 계산 정의 표시; M1-M2
-앱별 메모리 목록,memory,must,yes,no,F02 S02; PSS 우선 RSS fallback 구별; M1-M2
-앱 선택과 정상 닫기,memory,must,yes,no,F03 S02; 사용자 선택 및 현재 창 재검증; M3
-활동 중 앱 보호와 이유,memory,must,yes,no,F03 F05; S02; 터미널과 개발 도구 보호; M1-M3
-결과 재측정과 기록,history,must,yes,no,F03 F08 S05; 관측 변화량과 실제 귀속 구별; M3
-임계값 설정,settings,should,yes,no,F04 S03; 제품 정책 초안; M3
+전체 메모리 상태 표시,memory,must,yes,partial,F02 S02; MemAvailable 기반 계산 정의 표시; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+앱별 메모리 목록,memory,must,yes,partial,F02 S02; PSS 우선 RSS fallback 구별; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+앱 선택과 정상 닫기,memory,must,yes,partial,F03 S02; 사용자 선택 및 현재 창 재검증; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+활동 중 앱 보호와 이유,memory,must,yes,partial,F03 F05; S02; 터미널과 개발 도구 보호; M1-M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+결과 재측정과 기록,history,must,yes,partial,F03 F08 S05; 관측 변화량과 실제 귀속 구별; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+임계값 설정,settings,should,yes,partial,F04 S03; 제품 정책 초안; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 자동 메모리 종료,automation,could,yes,skip,matci MVP는 제안만; 자동 종료는 미지원
-빠른 상태 진입,notch,must,yes,no,F02 S04; 원본 menu bar를 GNOME 노치로 재설계; M1-M2
+빠른 상태 진입,notch,must,yes,partial,F02 S04; 원본 menu bar를 GNOME 노치로 재설계; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 기간별 사용량 추세,history,should,yes,no,F08 S05; M4
 디스크 읽기 스캔,disk,should,yes,no,F06 S06; M4
 디스크 항목 분류,disk,should,yes,no,F06 S06; Linux 경로 규칙 별도 검증; M4
@@ -16,10 +16,10 @@ feature,area,priority,original,clone,notes
 앱 제거,uninstall,could,yes,skip,원본 macOS 제거와 Linux 패키지 관리는 다름; M5는 설치 출처 안내부터
 APFS 공유 저장과 macOS 투명 압축,optimize,could,yes,skip,ext4 기본 Ubuntu와 같은 기능으로 약속하지 않음
 Apple Shortcuts 통합,integration,could,yes,skip,대상 Linux 플랫폼 범위 밖
-Archsport 노치 모션 재사용,notch,must,no,no,A01; GNOME320ms와 web420ms 별도; M1-M2
-Archsport 동시 노치 충돌 대응,notch,must,no,no,보조 슬롯과 패널 아이콘 fallback; M2 실기 검수
-PSI와 메트릭 종류 표시,memory,must,no,no,L01 L02; unavailable은 null; M1-M2
-절전 복귀와 worker 단일 수명,lifecycle,must,no,no,실기에서 검증; M2
-키보드와 모션 감소,accessibility,must,no,no,원본 미관측 상태를 matci 요구사항으로 추가; M1-M2
-자동 관리 제안 모드,automation,should,no,no,기본 꺼짐; 자동 종료 없음; M3
+Archsport 노치 모션 재사용,notch,must,no,partial,A01; GNOME320ms와 web420ms 별도; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+Archsport 동시 노치 충돌 대응,notch,must,no,partial,보조 슬롯과 패널 아이콘 fallback; M2 실기 검수; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+PSI와 메트릭 종류 표시,memory,must,no,partial,L01 L02; unavailable은 null; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+절전 복귀와 worker 단일 수명,lifecycle,must,no,partial,실기에서 검증; M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+키보드와 모션 감소,accessibility,must,no,partial,원본 미관측 상태를 matci 요구사항으로 추가; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+자동 관리 제안 모드,automation,should,no,partial,기본 꺼짐; 자동 종료 없음; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 Chrome 탭 discard,integration,could,no,skip,원본 사진에서 확인 안 됨; 별도 브라우저 확장 후속 검토

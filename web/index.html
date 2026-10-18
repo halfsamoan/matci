@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#101216">
+  <title>matci · 메모리와 작업의 여유</title>
+  <link rel="icon" href="./assets/matci.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <div class="gnome-panel" aria-label="GNOME 패널 시연">
+    <span class="panel-workspace">활동 <span class="workspace-dots" aria-hidden="true">● ●</span></span>
+    <span class="panel-clock">10월 18일 일요일 · 12:30</span>
+    <div class="panel-tools"><button id="companion" type="button" hidden></button><span aria-hidden="true">⌁ &nbsp; ▰</span></div>
+  </div>
+  <div id="dock" class="dock" aria-label="두 앱의 노치">
+    <section id="memory-island" class="island memory-island" aria-label="matci 메모리 노치"></section>
+    <section id="sport-island" class="island sport-island" aria-label="Archsport 축구 노치"></section>
+  </div>
+  <main class="desktop">
+    <div class="desktop-intro"><span class="product-wordmark">matci<span class="wordmark-dot">.</span></span><p>작업의 흐름은 이어지고,<br>메모리에는 여유가 생기도록.</p></div>
+    <section class="app-window" aria-label="matci 앱 시연">
+      <header class="window-bar"><span class="window-brand"><img src="./assets/matci.svg" alt="" width="24" height="24"> matci</span><span class="demo-indicator">시연 데이터 · 실제 앱 변경 없음</span><button type="button" data-action="collapse" aria-label="노치 접기" class="quiet icon-button">⌃</button></header>
+      <div class="app-layout">
+        <nav class="sidebar" aria-label="주요 화면">
+          <button type="button" data-page="memory" aria-current="page"><span aria-hidden="true">▤</span> 메모리</button>
+          <button type="button" data-page="history"><span aria-hidden="true">◷</span> 작업 기록 <span id="history-count" class="nav-count"></span></button>
+          <button type="button" data-page="settings"><span aria-hidden="true">☷</span> 설정</button>
+          <div class="sidebar-bottom"><span class="local-dot"></span> 기기 안에서만<br><small>Ubuntu GNOME용 · Windows 시연</small></div>
+        </nav>
+        <div id="content" class="app-content"></div>
+      </div>
+    </section>
+    <section class="simulation" aria-label="시연 제어">
+      <div><strong>상태를 직접 바꿔보세요</strong><p>메모리와 경기 이벤트가 겹쳐도 열린 검토를 유지합니다.</p></div>
+      <div class="simulation-controls"><label for="scenario">메모리 상태</label><select id="scenario" name="scenario"><option value="normal">기본 관측</option><option value="partial">일부 읽기 실패</option><option value="empty">후보 없음</option><option value="offline">관측 중단</option></select><button type="button" data-action="goal">골 시연</button><button type="button" id="sport-toggle" data-action="toggle-sport" aria-pressed="true">Archsport 켜짐</button></div>
+    </section>
+    <footer class="page-footer"><span>matci · Portfolio 02</span><span>메모리 수치는 합성값입니다. 구단 표장은 각 권리자 소유입니다.</span></footer>
+  </main>
+  <dialog id="review-dialog" aria-labelledby="review-title"></dialog>
+  <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>
+</body>
+</html>

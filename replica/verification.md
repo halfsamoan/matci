@@ -1,5 +1,34 @@
 # 검증 기록
 
+## 구현 후 최신 결과 — 2026-10-18
+
+| 실행 | 실제 결과 | 검증 범위 |
+|---|---|---|
+| Windows `python -m unittest discover -s tests -v` |42개 중40통과/2POSIX·symlink skip | stdlib core·protocol·SQLite·패키징 |
+| WSL Ubuntu22.04 / Python3.10 같은 명령 |42/42통과 | POSIX 권한·심볼릭 링크 거부 포함 |
+| `node --test tests/dock.test.mjs tests/native-actions.test.mjs tests/native-worker.integration.test.mjs` |15/15통과 | geometry/보호/입력시각/닫기 gate + 실제 JS→Python Worker→임시SQLite |
+| WSL strict schema dry-run |exit0 | GSettings XML만. GNOME UI 호환성 아님 |
+| Windows `tools/smoke_worker.py` |demo/health ok/합성6프로세스 | 실제 OS 제어 없음 |
+| WSL `tools/smoke_worker.py` |live/health ok/5프로세스/PSI available | WSL 실제 `/proc` 읽기, ASUS 목표 장치 아님 |
+| `tools/package_extension.py` |19개 allowlist runtime 파일 ZIP | 사진·DB·진단·웹 참고자료 제외, schema는 설치 때 compile |
+| 계획 무결성·대비 |JSON/CSV/링크/이미지해시/SQLite 초안 통과,13/13 AA | 디자인 제안 수치, UI 전체 접근성 인증 아님 |
+
+Playwright CLI로 Chromium에서1440×1000/1100 및390×844를 실제 조작했다. 앱 선택→검토 확인→합성 닫기 결과/기록, 검토 중 Alt+G 골 대기, 좁은 화면 companion 전환(활성 폭366/x12), 모션 감소 transition0s, body scrollWidth=390을 확인했다. partial은 RSS 대체 안내, offline은 수치없음/닫기 비활성, empty는 후보없음/닫기 비활성을 확인했다. 콘솔 오류0·경고0. 화면은 `docs/screenshots/`에 합성 시연으로 보관한다.
+
+proof-first: core 초기 missing module, package 초기 missing module, dock 초기 missing module 실패를 먼저 관측했다. 부모 통합 검수에서 연속 sample_now 요청이250ms 제한과 충돌함을 발견해 requested ack 후300ms 재검증 대기를 추가했고, 실제 worker 연결 테스트로 검증했다. 간소화에서는 상한 상수 재사용·미사용 import/중복 가드 제거·기록 요약 N+1 조회를 일괄조회로 개선했다. 보호 조건과 proof 테스트는 보존했다.
+
+**실제 ASUS Ubuntu GNOME P0-01–15는 전부 미실행.** 실제 창 닫기/저장 취소/노치 동시 animation/배율/절전/lock/성능/로그인 자동 시작을 통과로 기록하지 않는다. 앱 점유는 현재 창 PID에 귀속된 관측값이며 Chrome 전체 자손/탭 메모리로 보장하지 않는다.
+
+### 최종 소스 검토와 공개 범위
+
+`Code review: skipped (ce-code-review unavailable)` — 실제 검토 호출(run `20261018-809e4bfd`)이 사용량 한도로 종료되어 완료 receipt를 받지 못했다. cross-model 작업은 jq 부재로 검토를 실행하지 않았고 결과가 없었다. 추가 유료/반복 호출 없이 종료된 작업 디렉터리를 정리했다. 이를 검토 통과로 세지 않는다.
+
+수동 diff scan은 창 닫기 전 저장 ack·재검증, JSONL 입력 상한, UID·저장 권한·단일 worker, 상태/패키지 제외 목록, 노치 우선순위와 해제 수명, 기존 Archsport 변경을 확인했다. 공개 업로드를 막는 확인된 결함은 발견하지 않았다. 네이티브 accent를 승인된 amber로 맞추고 긴 상태 문구를 scroll 영역에 넣어 하단 조작부의 공간을 보존했다. 실제 GNOME 배치 검수는 여전히 필요하다.
+
+사용자의 후속 지시로 두 앱은 독립된 **공개 GitHub 저장소**로 유지한다. matci의 공개 소스 MVP와 Archsport 공존 변경을 게시하며, 참고 사진은 연구 자료로만 남고 설치 ZIP에는 없다. 로컬 DB·세션·진단·환경은 게시하지 않는다. M4/M5와 목표 장치 검수는 완료 범위에 포함하지 않는다.
+
+## 초기 M0 기록 — 아래는 구현 전 시점
+
 2026-10-18 / Windows. 계획 산출물의 검사 결과는 아래에 추가한다. 실제 앱·GNOME 검수와 구별한다.
 
 - 원본 공개 자료: sources.md의 페이지와 사용자 이미지 참조. 원본 앱 실행은 하지 않음.

@@ -1,5 +1,7 @@
 # matci 최종 작업 계획
 
+> 초기 설계 기록이다. 후속 사용자 요청으로 M1–M3 소스 구현과 공개 GitHub 업로드까지 범위를 확장했다. 현재 구현·검증 상태와 중앙 그룹 방식의 두 노치 공존 계약은 `LINUX_HANDOFF.md`, `DUAL_NOTCH.md`, `../replica/verification.md`를 따른다. Ubuntu GNOME 실기 P0와 M4/M5는 완료되지 않았다. Archsport와 matci는 각각 독립 앱·저장소다.
+
 2026-10-18 · 포트폴리오 02 · **공개 자료·이미지 기반 조사와 1차 설계 완료, 구현 전**
 
 ## 1. 만들 제품

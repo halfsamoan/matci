@@ -1,5 +1,7 @@
 # 로컬 backend 계획
 
+2026-10-18 구현 후 상태: stdlib collector/worker/store와 migration runner를 구현했다. current UID/session/request/sample·PIDstart 검증, 단일 worker lock, POSIX 권한·retention·atomic summary, demo OS action 거부 및 interrupted receipt는 Windows/WSL 테스트에서 확인했다. 테스트 수·한계는 verification.md. 아래 체크리스트는 초기 설계 당시의 계획이며 실제 GNOME 수명 검수는 여전히 미완료다.
+
 서버·계정·결제·메일·외부 API는 적용하지 않는다. backend 역할은 stdlib worker와 SQLite다. `.env.example`이나 API 키가 필요한 설계가 아니다.
 
 - [x] 저장 위치·owner UID·데이터 최소화 결정 (`architecture.md`).

@@ -1,6 +1,6 @@
 # Linux 설치·릴리스 사전 조건
 
-**현재 not ready. 앱 미구현, 실제 설치·공개 배포 미실행.** 이 문서는 replica-deploy를 Linux 로컬 앱에 맞게 적용한 계획이다.
+**현재 native runtime not verified. MVP 소스·웹 시연·설치/패키지 도구는 구현했으며 실제 GNOME 설치·공개 릴리스는 미실행이다.** 사용자는 구현 후 GitHub 소스 업로드를 요청했다. 소스 업로드와 실제 장치 사용 준비 완료를 구별한다. 아래는 Linux 사용 릴리스의 사전 조건이다.
 
 - [ ] M3 핵심 must 및 matci 추가 P0 요구 구현 완료.
 - [ ] Python 테스트 통과, 실제 GSettings schema strict 검증.

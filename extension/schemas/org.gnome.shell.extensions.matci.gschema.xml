@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.matci" path="/org/gnome/shell/extensions/matci/">
+    <key name="mode" type="s"><choices><choice value="live"/><choice value="demo"/></choices><default>'live'</default><summary>Observation source</summary></key>
+    <key name="show-notch" type="b"><default>true</default><summary>Show notch below the panel</summary></key>
+    <key name="hide-fullscreen" type="b"><default>true</default><summary>Hide notch during fullscreen</summary></key>
+    <key name="monitor-index" type="i"><range min="-1" max="31"/><default>-1</default><summary>Monitor index; minus one is primary</summary></key>
+    <key name="auto-suggestions" type="b"><default>false</default><summary>Suggest manual review; never auto close</summary></key>
+    <key name="threshold" type="i"><range min="50" max="99"/><default>85</default><summary>Used memory suggestion percentage</summary></key>
+    <key name="protected-app-ids" type="as"><default>[]</default><summary>User protected desktop IDs</summary></key>
+  </schema>
+</schemalist>

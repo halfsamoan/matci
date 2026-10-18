@@ -1,0 +1,23 @@
+name: Checks
+on: [push, pull_request]
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m unittest discover -s tests -v
+      - run: python tools/verify_planning.py
+      - run: glib-compile-schemas --strict --dry-run extension/schemas
+      - run: node --check extension/extension.js
+      - run: node --check extension/prefs.js
+      - run: node --check extension/notchDock.js
+      - run: node --test tests/*.mjs
+      - run: node --check web/app.js
+      - run: python -m matci --mode demo --once --state-dir /tmp/matci-ci-demo
+      - run: python tools/package_extension.py

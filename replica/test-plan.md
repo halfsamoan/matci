@@ -1,6 +1,6 @@
 # matci 검수 계획
 
-**앱 테스트 실행 0건.** 아래는 구현 이후의 acceptance cases다. 설계 파일 검사는 `verification.md`에서 별도 보고한다.
+자동 검수는 `verification.md`의 최신 결과를 따른다. 아래는 실제 GNOME와 후속 기능까지 포함한 acceptance cases이며, 특히 P0 실기 검수는 아직 전부 미실행이다. 단위/통합 테스트의 synthetic 창 callback을 실제 앱 닫기 검수로 세지 않는다.
 
 ## 흐름별 케이스
 

@@ -1,0 +1,25 @@
+[
+  {
+    "schema_version": 1,
+    "type": "snapshot",
+    "mode": "demo",
+    "sample_id": "synthetic-only-01",
+    "session_id": "synthetic-only",
+    "boot_id": "synthetic-boot-only",
+    "monotonic_ms": 10000,
+    "sampled_at": "2026-10-18T03:00:00Z",
+    "health": "ok",
+    "memory": {"total_bytes": 17179869184, "available_bytes": 2469606195, "used_ratio": 0.85625, "definition": "MemTotal minus MemAvailable", "observed_monotonic_ms": 10000, "age_ms": 0},
+    "pressure": {"some_avg10": null, "full_avg10": null, "availability": "unavailable"},
+    "processes": [
+      {"uid": 1000, "pid": 10001, "start_ticks": 1000, "comm": "chrome", "demo_app_id": "google-chrome.desktop", "metric_kind": "pss", "memory_bytes": 964689920, "coverage": "complete", "cpu_fraction_one_core": 0.005},
+      {"uid": 1000, "pid": 10002, "start_ticks": 2000, "comm": "nautilus", "demo_app_id": "org.gnome.Nautilus.desktop", "metric_kind": "pss", "memory_bytes": 188743680, "coverage": "complete", "cpu_fraction_one_core": 0.001},
+      {"uid": 1000, "pid": 10003, "start_ticks": 3000, "comm": "loupe", "demo_app_id": "org.gnome.Loupe.desktop", "metric_kind": "rss", "memory_bytes": 117440512, "coverage": "complete", "cpu_fraction_one_core": 0.0},
+      {"uid": 1000, "pid": 10004, "start_ticks": 4000, "comm": "gnome-terminal-", "demo_app_id": "org.gnome.Terminal.desktop", "metric_kind": "pss", "memory_bytes": 230686720, "coverage": "complete", "cpu_fraction_one_core": 0.04},
+      {"uid": 1000, "pid": 10005, "start_ticks": 5000, "comm": "code", "demo_app_id": "code.desktop", "metric_kind": "pss", "memory_bytes": 1342177280, "coverage": "complete", "cpu_fraction_one_core": 0.2},
+      {"uid": 1000, "pid": 10006, "start_ticks": 6000, "comm": "gnome-shell", "demo_app_id": "org.gnome.Shell.desktop", "metric_kind": "pss", "memory_bytes": 346030080, "coverage": "complete", "cpu_fraction_one_core": 0.01}
+    ],
+    "warnings": ["SYNTHETIC_DATA", "PSI_UNAVAILABLE"],
+    "truncated": false
+  }
+]

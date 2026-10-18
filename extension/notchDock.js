@@ -67,10 +67,17 @@ export class DockParticipant {
     }
 
     update(state) {
+        const changed = Object.entries(state).some(([key, value]) => this.state[key] !== value);
         Object.assign(this.state, state);
-        if ((!this.state.expanded || !this.state.visible) && this.dock.active?.id === this.id)
+        if ((state.expanded === false || state.visible === false) && this.dock.active?.id === this.id)
             this.dock.active = null;
-        this.dock.reflow();
+        // Monitor and panel geometry can change even when this state is unchanged.
+        const monitor = this.monitor();
+        const geometry = monitor ? `${monitor.x}:${monitor.y}:${monitor.width}:${Main.panel.height}` : '';
+        if (changed || geometry !== this.geometry) {
+            this.geometry = geometry;
+            this.dock.reflow();
+        }
     }
 
     destroy() {
