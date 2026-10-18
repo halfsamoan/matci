@@ -1,5 +1,10 @@
 # 빌드 기록
 
+## V2 — 사용자 디자인 피드백 반영
+
+큰 GTK4 창과 확장 소유 D-Bus bridge를 추가했다. S02는 세로 축·입자·상태 색·실제 GIcon/웹 앱 자산·선 없는 목록·rail·자동 제안 popover로 개편했다. 결과는 같은 메모리 화면에 남고 양의 전체 시스템 관측 변화만 확산/counter로 표현한다. GTK 조작부는 고정 footer, 최근60회 관측 추세는 세션 범위다. S03/S05도 독립 창에서 접근한다. 실제 GNOME 닫기 검수와 M4/M5는 대기다. 검증과 화면은 verification.md와 docs/screenshots/*-v2.png를 참조한다.
+
+
 2026-10-18 후속 구현: M1 웹 시연, M2 Linux read-only worker/GNOME 소스, M3 수동 닫기 gate/영속 기록/제안 소스를 구현했다. S01–S05는 소스와 합성 시연이 존재하며 실제 GNOME 검수 전이므로 완성된 호환 제품으로 판정하지 않는다. S06–S08은 후속이다. 현재 상태는 README와 docs/LINUX_HANDOFF.md를 따른다.
 
 두 노치는 공유 registry/geometry로 한 중앙 그룹을 이루며 수동100/경기80/제안30, 폭 부족 시 패널 fallback을 구현했다. 초기 왼쪽 슬롯 초안을 대체하는 사용자 후속 요청이다. GUI에서 닫기를 실제 실행한 적은 없으며 JS↔Python 통합은 synthetic window callback이다.

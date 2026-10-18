@@ -1,19 +1,21 @@
-## Parity: 32.3 / 100
+## Parity: 36.2 / 100
 
-features 32.3  (13 counted, must-haves 0 of 6 done)
+features 36.2  (17 counted, must-haves 0 of 7 done)
 
-Not shippable yet: 6 must-have features are not done.
+Not shippable yet: 7 must-have features are not done.
 
 ## By area, weakest first
 - disk                           0.0  (3 features)
 - organize                       0.0  (2 features)
 - history                       30.0  (2 features)
-- memory                        50.0  (4 features)
-- settings                      50.0  (1 features)
+- memory                        50.0  (5 features)
+- settings                      50.0  (2 features)
 - notch                         50.0  (1 features)
+- design                        50.0  (2 features)
 
 ## Missing, in build order
 - [must] history: 결과 재측정과 기록, partial  (F03 F08 S05; 관측 변화량과 실제 귀속 구별; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증)
+- [must] memory: 독립 GTK4 메모리 창, partial  (V2; 실제 GTK4 렌더·popover/세션 D-Bus 합성 통합 통과; 실제 GNOME 닫기 P0 대기)
 - [must] memory: 앱 선택과 정상 닫기, partial  (F03 S02; 사용자 선택 및 현재 창 재검증; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증)
 - [must] memory: 앱별 메모리 목록, partial  (F02 S02; PSS 우선 RSS fallback 구별; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증)
 - [must] memory: 전체 메모리 상태 표시, partial  (F02 S02; MemAvailable 기반 계산 정의 표시; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증)
@@ -24,7 +26,10 @@ Not shippable yet: 6 must-have features are not done.
 - [should] history: 기간별 사용량 추세, no  (F08 S05; M4)
 - [should] organize: 폴더 이동과 undo, no  (F07 S07; 충돌과 변경 원본 보호; M4)
 - [should] organize: 폴더 정리 미리보기, no  (F07 S07; 사용자 선택 root만; M4)
+- [should] design: 설치 앱 GIcon 표시, partial  (V2; GTK Gio.AppInfo GIcon 및 Shell app icon; 웹 공식 Chrome/Code와 공개 테마 자산; 대상 설치 앱 실기 대기)
+- [should] design: 세로 메모리 축과 입자 피드백, partial  (V2; 웹 Canvas·Gtk.DrawingArea 같은 point model; 모션 감소; 양의 관측 변화 counter; 원본 pixel 측정 아님)
 - [should] settings: 임계값 설정, partial  (F04 S03; 제품 정책 초안; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증)
+- [should] settings: 자동 제안 floating popover, partial  (V2; 웹 및 GTK 실제 조작; GSettings memory smoke; 실제 GNOME 동기화 대기)
 - [could] disk: 재생성 가능 캐시 정리, no  (실행 중 앱 제외와 계획 재검증 이후 별도 구현; M4 이후)
 
 ## Left out on purpose (not scored)

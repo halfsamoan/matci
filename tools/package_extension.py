@@ -6,7 +6,7 @@ from pathlib import Path
 
 def runtime_files(source):
     source = Path(source).resolve()
-    for folder in ('extension', 'matci', 'data', 'migrations'):
+    for folder in ('extension', 'app', 'matci', 'data', 'migrations'):
         base = source / folder
         if not base.exists():
             continue
@@ -22,6 +22,10 @@ def runtime_files(source):
                 if path.suffix not in ('.js', '.json', '.css', '.xml', '.svg'):
                     continue
                 target = relative
+            elif folder == 'app':
+                if path.suffix not in ('.js', '.css', '.svg'):
+                    continue
+                target = Path(folder) / relative
             elif folder == 'matci':
                 if path.suffix not in ('.py', '.sql'):
                     continue

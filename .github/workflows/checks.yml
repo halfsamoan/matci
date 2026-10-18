@@ -19,5 +19,9 @@ jobs:
       - run: node --check extension/notchDock.js
       - run: node --test tests/*.mjs
       - run: node --check web/app.js
+      - run: node --check app/main.js
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq gjs gir1.2-gtk-4.0 xvfb dbus-x11
+      - run: dbus-run-session -- gjs -m tests/desktop-service.integration.js
+      - run: python tools/smoke_gtk.py
       - run: python -m matci --mode demo --once --state-dir /tmp/matci-ci-demo
       - run: python tools/package_extension.py

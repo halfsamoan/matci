@@ -1,6 +1,10 @@
 # 컴포넌트 사양
 
-제품 색·규격은 `tokens.json`의 matci 제안값이다. 원본 사진은 앱 내용의 계층과 분류를 확인하는 참고이며 pixel 수치를 추출한 정밀 측정은 아니다. Archsport 값만 사용자 소스에서 확인했다. 제품 구현은 아직 없다.
+제품 색·규격은 `tokens.json`의 matci 제안값이다. 원본 사진은 계층·분류의 참고이며 정밀 pixel 측정이 아니다. Archsport 모션 값은 사용자 소스에서 확인했다. V2 구현은 `../../docs/DESIGN_V2.md`를 따른다. idle yellow/active blue/protected gray/freed lime으로 의미를 나눈다.
+
+MemoryField: Canvas/Gtk.DrawingArea가 같은 point model을 사용한다. 세로 축·최대320입자·양의 관측 변화 후1.6초 확산/counter, 모션 감소 시 정지/즉시 값. 점은 바이트와1:1 대응하지 않는다. 브라우저 hidden/화면 이동 때 RAF 중지, GTK는 활성 메모리 창에서만 redraw한다.
+
+AutoCarePopover: 토글+50–99 slider+정책 설명, 기본off·키보드 조작·자동 닫기 없음. GTK는 GSettings, 웹은 시연 상태다. GTK demo/smoke는 설정도 memory backend다.
 
 | 컴포넌트 | variants / 상태 | 상호작용·접근성 | 사용 화면 |
 |---|---|---|---|

@@ -23,3 +23,7 @@ PSI와 메트릭 종류 표시,memory,must,no,partial,L01 L02; unavailable은 nu
 키보드와 모션 감소,accessibility,must,no,partial,원본 미관측 상태를 matci 요구사항으로 추가; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 자동 관리 제안 모드,automation,should,no,partial,기본 꺼짐; 자동 종료 없음; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 Chrome 탭 discard,integration,could,no,skip,원본 사진에서 확인 안 됨; 별도 브라우저 확장 후속 검토
+독립 GTK4 메모리 창,memory,must,yes,partial,V2; 실제 GTK4 렌더·popover/세션 D-Bus 합성 통합 통과; 실제 GNOME 닫기 P0 대기
+세로 메모리 축과 입자 피드백,design,should,yes,partial,V2; 웹 Canvas·Gtk.DrawingArea 같은 point model; 모션 감소; 양의 관측 변화 counter; 원본 pixel 측정 아님
+자동 제안 floating popover,settings,should,yes,partial,V2; 웹 및 GTK 실제 조작; GSettings memory smoke; 실제 GNOME 동기화 대기
+설치 앱 GIcon 표시,design,should,yes,partial,V2; GTK Gio.AppInfo GIcon 및 Shell app icon; 웹 공식 Chrome/Code와 공개 테마 자산; 대상 설치 앱 실기 대기

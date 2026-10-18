@@ -14,6 +14,30 @@ from package_extension import runtime_files
 UUID = 'matci@local'
 
 
+def desktop_entry(target):
+    target = str(target)
+    if '\n' in target or '\r' in target:
+        raise ValueError('Unsupported launcher path')
+    quoted = target.replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$').replace('%', '%%')
+    return ('[Desktop Entry]\nType=Application\nName=matci\nComment=Memory observation and manual window-close review\n'
+            f'Exec=gjs -m "{quoted}/app/main.js"\nIcon={target}/app/matci.svg\n'
+            'Terminal=false\nCategories=System;Monitor;\nStartupNotify=true\nX-Matci-Managed=true\n')
+
+
+def sync_launcher(target, applications):
+    applications.mkdir(parents=True, exist_ok=True)
+    launcher = applications / 'org.matci.App.desktop'
+    if launcher.is_symlink():
+        raise ValueError('App launcher symlink was preserved')
+    if (target / 'app/main.js').is_file():
+        launcher.write_text(desktop_entry(target), encoding='utf-8')
+        return launcher
+    # A rollback to pre-GTK matci must not leave a shortcut to a missing file.
+    if launcher.exists() and 'X-Matci-Managed=true' in launcher.read_text(encoding='utf-8'):
+        launcher.unlink()
+    return None
+
+
 def verify_identity(path):
     if path.is_symlink() or not path.is_dir():
         raise ValueError('Unexpected extension location')
@@ -78,6 +102,10 @@ def main():
             parked.rename(target)
         raise
     print(f'설치됨: {target}')
+    applications = parent.parents[1] / 'applications'
+    launcher = sync_launcher(target, applications)
+    if launcher:
+        print(f'앱 바로가기: {launcher}')
     print('로그아웃·로그인 후 gnome-extensions enable matci@local')
     print('설정창: gnome-extensions prefs matci@local')
     print('Archsport도 최신 dual-notch 버전으로 업데이트하면 두 섬이 함께 배치됩니다.')

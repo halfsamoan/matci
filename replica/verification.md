@@ -1,5 +1,19 @@
 # 검증 기록
 
+## 디자인 V2 — 2026-10-18 추가 검증
+
+- Windows Python44개:42통과/2POSIX·symlink skip. WSL Ubuntu22.04 Python3.10:44/44. Launcher 업그레이드→pre-GTK rollback과 사용자 바로가기 보존2개 검증을 추가했다. 기존 core 안전 정책은 유지했다.
+- Node20/20: 기존15+sender/nonce/expiry/disconnect/선택 검증/공개 projection/입자 상한·모션 감소·signed delta5개. JS→실제 Python Worker 통합도 포함한다.
+- GJS1.72 세션 D-Bus 실제 transport: GetState/Review/다른 sender Confirm 거부/원 sender Confirm 통과. 창 행위는 fake이며 실제 앱을 닫지 않았다.
+- GTK4.6 실제 WSL/Xvfb 렌더+popover 토글·92% slider→GSettings memory 검증 통과. `tools/smoke_gtk.py --capture`, G_DEBUG=fatal-criticals, GDK_BACKEND=x11/GSK_RENDERER=cairo. 초기 Korean 폰트 부재는 WSL에 Noto CJK 설치로 해결했다. 고정 footer 변경에서 발생한 GtkBox 높이 협상 경고는 footer 줄바꿈을 명시해 제거했고 fatal-criticals 검사로 재확인했다.
+- Chromium1440/390: popover·92%·앱 선택/확인·검토 중 골 대기·+612MiB 합성 결과·기록·모션 감소·offline/empty/partial·모든 앱 아이콘 로드·mobile 가로overflow0·팝오버 화면 안 배치 통과. 콘솔 오류/경고0. mobile rail의 이전 display:block 상속 오류를 수정했다.
+- 디자인 대비17/17 AA, 최소6.17:1. allowlist ZIP은25개 runtime 파일(app 포함). 공식 Chrome/VS Code 및 Tango 테마 자산은 provenance와 권리 안내를 동봉하고 원본 Mint 자산은 사용하지 않았다.
+
+큰 GTK 창은 확장 소유 CloseController에 연결한다. 새 worker·daemon·PID 종료 API가 없다. demo/smoke의 설정도 메모리에 격리한다. 수동 diff scan에서 bridge 수명, sender 바인딩, stale 메모리 null, 요청 재검증, 패키지 제외와 launcher 경로를 확인했다. 별도 다중 에이전트 검토는 재호출하지 않았다.
+
+실제 ASUS GNOME의 D-Bus→현재 Meta.Window 정상 닫기/저장 취소, 설치 앱 아이콘, 앱 launcher 업그레이드, 잠금·배율·절전·노치 동시 검수는 여전히 미실행이다. WSL GTK 렌더를 GNOME Shell 통과로 세지 않는다. Disk/Organize/제거 및 기간별 영속 추세는 미구현이다. REA 원본 binary 분석도 추가 수행하지 않았다.
+
+
 ## 구현 후 최신 결과 — 2026-10-18
 
 | 실행 | 실제 결과 | 검증 범위 |

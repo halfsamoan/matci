@@ -10,6 +10,12 @@ matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저
 
 ## Windows에서 보기
 
+V2는 **큰 GTK4 독립 창**, 세로 메모리 축·입자 모션, yellow/blue/gray/lime 상태 색, 앱 GIcon, 자동 제안 popover와 아이콘 rail을 추가했다. 노치는 요약과 앱 진입을 담당한다.
+
+![Windows 합성 시연](docs/screenshots/desktop-v2.png)
+
+[GTK4 렌더링 캡처](docs/screenshots/native-gtk-v2.png)는 WSL/Xvfb 합성 시연이다. 그 환경에 없는 앱은 일반 테마 아이콘이며 실제 설치 앱은 desktop entry의 GIcon을 사용한다. 원본 픽셀 측정이나 바이너리 분석 결과로 주장하지 않는다.
+
 ```powershell
 python -m http.server 4180 --bind 127.0.0.1 --directory web
 ```
@@ -17,6 +23,10 @@ python -m http.server 4180 --bind 127.0.0.1 --directory web
 [시연 화면](http://127.0.0.1:4180)에서 두 노치·메모리 선택·검토·기록·설정을 확인한다. 합성 데이터이며 Windows 앱이나 실제 메모리는 변경하지 않는다.
 
 ## Ubuntu 설치
+
+필요 패키지: `sudo apt install python3 libglib2.0-bin gjs gir1.2-gtk-4.0 gnome-shell-extension-prefs`.
+
+설치 후 앱 목록의 **matci**, 패널 메뉴 또는 노치의 **앱 열기**로 큰 창을 연다. 창은 같은 확장에 연결한다. 확장이 꺼져 있으면 수치와 닫기를 비활성화하며 worker를 추가하지 않는다. GTK 검토도 기존 정상 닫기 gate를 통과한다.
 
 ```bash
 python3 tools/doctor.py --output local-diagnostics/doctor.json
@@ -45,6 +55,7 @@ gnome-extensions enable matci@local
 - 수동 화면100 → 경기 알림80 → 메모리 제안30. 좁은 모니터는 패널 버튼으로 전환한다.
 - [Linux 인수인계와 실기 절차](docs/LINUX_HANDOFF.md)
 - [노치 공존 규칙](docs/DUAL_NOTCH.md)
+- [독립 창과 디자인 V2 계약](docs/DESIGN_V2.md)
 - [검증 기록과 한계](replica/verification.md)
 - [최초 구현 계획](docs/IMPLEMENTATION_PLAN.md) · [원본 조사](replica/recon.md)
 

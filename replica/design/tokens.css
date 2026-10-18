@@ -1,19 +1,19 @@
-/* matci proposed design tokens; no product UI implemented. */
 :root {
-  --bg: #101216;
-  --surface: #1b1e24;
-  --notch: #080a0d;
-  --text: #f5f7fa;
-  --text-muted: #b7bdc7;
+  --bg: #050705;
+  --surface: #111311;
+  --notch: #050705;
+  --text: #f4f4f2;
+  --text-muted: #a0a3a6;
   --border: #454d59;
   --border-input: #8b95a5;
-  --accent: #e7b86d;
-  --on-accent: #16120c;
+  --accent: #b9ff29;
+  --on-accent: #10140a;
   --warning: #f0c57a;
   --danger: #ff9b9b;
   --success: #8de3c0;
-  --focus: #e7b86d;
-  --motion-native: 320ms;
-  --motion-web: 420ms;
-  --motion-web-ease: cubic-bezier(.22,1,.36,1);
+  --focus: #b9ff29;
+  --idle: #e7bc62;
+  --active: #4a8dff;
+  --protected: #8e9297;
+  --freed: #b9ff29;
 }

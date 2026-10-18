@@ -1,0 +1,30 @@
+window.matci, .matci headerbar { background: #050705; color: #f4f4f2; }
+.matci .rail { background: #080b08; padding: 34px 12px; min-width: 72px; }
+.matci .rail button { background: transparent; border: none; box-shadow: none; color: #a0a3a6; padding: 14px 6px; }
+.matci .rail button.nav-active { color: #b9ff29; background: #182109; box-shadow: 0 0 24px alpha(#b9ff29,.10); border-radius: 16px; }
+.matci .rail label { font-size: 11px; }
+.matci .content { padding: 34px 40px; }
+.matci .hero-title { font-size: 42px; font-weight: 400; letter-spacing: -1px; }
+.matci .big-number { font-size: 42px; font-weight: 400; }
+.matci .visualization { margin: 12px 0 8px; }
+.matci .auto-trigger { color: #a0a3a6; }
+.matci .auto-trigger > button { background: transparent; border: none; box-shadow: none; padding-left: 0; }
+.matci .auto-trigger label { color: #a0a3a6; }
+.auto-popover { padding: 20px; min-width: 280px; }
+.matci popover contents { background: #1b201c; color: #f4f4f2; border: 1px solid #444c44; border-radius: 20px; }
+.matci .section-title, .auto-popover .section-title { font-size: 16px; font-weight: 600; }
+.matci .app-row { padding: 5px 0; }
+.matci .app-name { font-size: 14px; font-weight: 600; }
+.matci .app-memory { font-size: 13px; }
+.matci .muted, .auto-popover .muted { color: #a0a3a6; font-size: 12px; }
+.matci .idle, .auto-popover .idle { color: #e7bc62; }
+.matci .active { color: #4a8dff; }
+.matci .protected { color: #a0a3a6; }
+.matci .freed { color: #b9ff29; }
+.matci .result { font-size: 24px; padding-top: 12px; }
+.matci .action-bar { padding-top: 22px; }
+.matci .footer-host { padding: 0 40px 22px; background: #050705; }
+.matci .suggested-action { background: #b9ff29; color: #10140a; border-radius: 24px; padding: 12px 22px; }
+.matci .suggested-action:disabled { background: #20271a; color: #a0a3a6; }
+.matci .history-entry { padding: 20px 0; }
+.review-body { padding: 24px; }

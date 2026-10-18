@@ -1,5 +1,12 @@
 # matci 검수 계획
 
+## V2 추가 검수
+
+자동: Node bridge sender/nonce/expiry/busy/reconnect, real GJS D-Bus transport(fake actions), 실제 Gtk.DrawingArea·popover/GSettings(memory)·fatal-criticals smoke, 웹 세로 field/결과/모션 감소/390px/popup/앱 아이콘. 이 검사는 실제 Shell 창을 닫지 않는다.
+
+실기 대기: GTK launcher와 desktop identity, 보호 앱 GIcon, 앱/노치 검토의 상호 무효화, 클라이언트 종료/worker 재시작/잠금/절전 후 오래된 nonce 거부, 정상 닫기의 저장 취소·새 창·남은 창·음수 delta, 모션 감소·125/150%·고정 action/keyboard focus를 확인한다.
+
+
 자동 검수는 `verification.md`의 최신 결과를 따른다. 아래는 실제 GNOME와 후속 기능까지 포함한 acceptance cases이며, 특히 P0 실기 검수는 아직 전부 미실행이다. 단위/통합 테스트의 synthetic 창 callback을 실제 앱 닫기 검수로 세지 않는다.
 
 ## 흐름별 케이스

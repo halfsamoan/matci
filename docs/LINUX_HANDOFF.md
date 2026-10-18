@@ -4,6 +4,11 @@
 
 ## 사용자 결정과 구현 상태
 
+- **디자인 V2:** 큰 GTK4/GJS 창은 `app/main.js`, 확장 수명의 세션 D-Bus는 `extension/desktopService.js`, 검토 nonce는 `appBridge.js`다. GetState/Review/Confirm/Cancel을 사용하며 worker·SQLite writer·실제 닫기 경로는 추가하지 않는다. `DESIGN_V2.md` 참조.
+- nonce는 같은 D-Bus sender/60초/연결 수명에 묶인다. 확인 후에도 저장 ack와 두 번째 현재 창·프로세스 검증을 거친다. GTK는 검토 중 재렌더를 멈추며 평상시 checkbox 포커스를 보존한다.
+- 세로 축/입자·결과 counter·상태 색·popover·아이콘 rail을 웹/GTK에 구현했다. GTK GIcon은 설치 앱 정보를 사용한다. 작은 추세선은 이 세션의 중복 제외 최근60회 관측이며 기간별 영속 추세와 다르다.
+- 설치기는 app runtime과 사용자 `applications/org.matci.App.desktop`을 설치한다. source의 `gjs -m app/main.js --demo`는 실제 제어가 없는 시연이며 GSettings도 memory backend에 격리한다.
+
 - 두 번째 포트폴리오 **matci**. 개발은 Windows, 사용할 장치는 **ASUS Vivobook 15 Pro / Ubuntu GNOME**.
 - Mint for Mac의 메모리 확인·유휴 후보 검토·정상 종료 흐름을 새로 구현한다. 사진의 음악 창·Instagram·터미널 명령은 대상/지시가 아니다.
 - 사용자 후속 요청으로 M1–M3 메모리 MVP와 Archsport 공존 소스를 구현했다. 원래 계획은 `IMPLEMENTATION_PLAN.md`에 보존하고 현재 상태는 이 문서를 따른다.
@@ -48,7 +53,7 @@ python3 tools/smoke_worker.py
 확장 활성 중 같은 기본 state로 CLI worker를 동시에 켜지 않는다. 독립 진단은 별도 `--state-dir`을 사용한다.
 
 ```bash
-sudo apt install python3 libglib2.0-bin gnome-shell-extension-prefs
+sudo apt install python3 libglib2.0-bin gjs gir1.2-gtk-4.0 gnome-shell-extension-prefs
 python3 tools/install_extension.py
 ```
 
@@ -57,6 +62,8 @@ python3 tools/install_extension.py
 Archsport도 최신 공존 버전을 설치한다. `DUAL_NOTCH.md` 참조. 켜는 순서를 바꾸고 하나씩 disable/enable하여 등록/해제·중앙 복귀를 검사한다.
 
 ## 실제 장치 P0
+
+V2 추가: desktop launcher→GTK 창, 설치 앱 GIcon, popover→같은 GSettings 반영, 큰 창/노치 검토 상호 무효화, 클라이언트 종료·worker 재시작 뒤 nonce 거부, 실제 저장 취소/부분 결과/음수 delta, 잠금·절전·125/150%와 고정 action 접근을 확인한다.
 
 `replica/test-plan.md` P0-01–15를 장치/GNOME/Wayland/배율/실행일/증거와 함께 기록한다. 먼저 read-only 수치와 패널 위치, 두 노치 토글을 확인한다. 정상 닫기는 버릴 수 있는 테스트 GUI 앱에서 시작하고 문서 저장 취소도 확인한다.
 

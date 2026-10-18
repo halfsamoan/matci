@@ -1,5 +1,8 @@
 # matci 아키텍처
 
+> V2 현재 구조: `../docs/DESIGN_V2.md` 및 `../docs/LINUX_HANDOFF.md`가 아래 초기 설계를 보완한다. GTK4/GJS 독립 앱이 확장 소유 세션 D-Bus를 이용한다. worker와 실제 정상 닫기는 기존 확장 한 경로이며 daemon·추가 DB writer가 없다.
+
+
 선행 근거: `recon.md`의 S01–S08/F01–F08과 `features.csv`. 이 문서는 원본 구조의 복구가 아니라 Linux용 새 설계다.
 
 ## 기술 선택

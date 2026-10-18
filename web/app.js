@@ -1,4 +1,5 @@
 import {layoutNotches} from './dockModel.js';
+import {memoryPoints, COLORS} from './visualModel.js';
 
 // This browser UI only changes synthetic state. It never reads processes or closes apps.
 const $ = selector => document.querySelector(selector);
@@ -6,16 +7,16 @@ const state = {
   page: 'memory', scenario: 'normal', selected: new Set(), sportEnabled: true,
   owner: null, review: false, acknowledged: false, busy: false, receipt: null,
   history: [], closed: new Set(), goal: false, homeScore: 1, pendingGoal: false, goalTimer: null,
-  suggestions: false, threshold: 85, reducedMotion: false, partialResult: false,
+  suggestions: false, threshold: 85, reducedMotion: false, partialResult: false, releaseAt: 0,
 };
 const candidates = [
-  {id:'chrome', name:'Google Chrome', symbol:'◉', memory:744, windows:3, reason:'6분 동안 입력 없음 · 브라우저 작업 상태는 알 수 없음', detail:'열린 창 3개 전체가 닫기 대상입니다. 재생·다운로드·작성 중인 내용은 확인할 수 없습니다.'},
-  {id:'image', name:'이미지 뷰어', symbol:'▧', memory:164, windows:1, reason:'24분 동안 입력 없음 · 열린 창 1개', detail:'열린 창 1개에 정상 닫기를 요청합니다. 저장 여부는 앱의 확인창에서 결정합니다.'},
-  {id:'files', name:'파일', symbol:'▱', memory:92, windows:1, reason:'18분 동안 입력 없음 · 열린 창 1개', detail:'열린 창 1개에 정상 닫기를 요청합니다. 진행 중인 파일 작업은 직접 확인하세요.'},
+  {id:'chrome', name:'Google Chrome',  memory:744, windows:3, reason:'6분 동안 입력 없음 · 브라우저 작업 상태는 알 수 없음', detail:'열린 창 3개 전체가 닫기 대상입니다. 재생·다운로드·작성 중인 내용은 확인할 수 없습니다.'},
+  {id:'image', name:'이미지 뷰어',  memory:164, windows:1, reason:'24분 동안 입력 없음 · 열린 창 1개', detail:'열린 창 1개에 정상 닫기를 요청합니다. 저장 여부는 앱의 확인창에서 결정합니다.'},
+  {id:'files', name:'파일',  memory:92, windows:1, reason:'18분 동안 입력 없음 · 열린 창 1개', detail:'열린 창 1개에 정상 닫기를 요청합니다. 진행 중인 파일 작업은 직접 확인하세요.'},
 ];
 const protectedApps = [
-  {name:'Terminal · Codex',symbol:'›_',memory:'1.20 GiB',reason:'터미널·에이전트 작업 보호 · 선택할 수 없음'},
-  {name:'코드 편집기',symbol:'⌘',memory:'920 MiB',reason:'개발 도구 보호 · 선택할 수 없음'},
+  {name:'Terminal · Codex',memory:'1.20 GiB',reason:'터미널·에이전트 작업 보호 · 선택할 수 없음'},
+  {name:'코드 편집기',memory:'920 MiB',reason:'개발 도구 보호 · 선택할 수 없음'},
 ];
 const available = () => state.scenario === 'empty' ? [] : candidates.filter(app => !state.closed.has(app.id));
 const chosen = () => available().filter(app => state.selected.has(app.id));
@@ -25,6 +26,41 @@ const announce = text => { $('#live-status').textContent = text; };
 const metricPercent = () => state.scenario === 'offline' ? '—' : state.receipt?.delta > 0 ? '71' : '75';
 const demoLabel = '<span class="demo-indicator">시연 데이터 · 실제 앱 변경 없음</span>';
 const memIcon = '<span class="memory-bars" aria-hidden="true"><i></i><i></i><i></i></span>';
+const appIcons = {chrome:'chrome.svg',image:'image.png',files:'files.png','Terminal · Codex':'terminal.png','코드 편집기':'code.png'};
+const appImage = app => `<img class="app-icon" src="./assets/apps/${appIcons[app.id ?? app.name]}" alt="" width="30" height="30">`;
+let frame = 0;
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)');
+const reduceMotion = () => state.reducedMotion || prefersReduced.matches;
+
+function startMemoryField() {
+  cancelAnimationFrame(frame);
+  const canvas = $('#memory-field');
+  if (!canvas) return;
+  const context = canvas.getContext('2d');
+  function draw(now) {
+    if (!canvas.isConnected || document.hidden) return;
+    const bounds = canvas.getBoundingClientRect(), scale = Math.min(devicePixelRatio || 1, 2);
+    const width = bounds.width, height = bounds.height;
+    if (canvas.width !== Math.round(width*scale) || canvas.height !== Math.round(height*scale)) {
+      canvas.width = Math.round(width*scale); canvas.height = Math.round(height*scale);
+    }
+    context.setTransform(scale,0,0,scale,0,0); context.clearRect(0,0,width,height);
+    const ratio = state.scenario === 'offline' ? null : Number(metricPercent())/100;
+    const release = state.releaseAt && !reduceMotion() ? Math.min(1,(now-state.releaseAt)/1600) : 0;
+    context.lineWidth = 3; context.strokeStyle = '#303630'; context.beginPath(); context.moveTo(20,16); context.lineTo(20,height-18); context.stroke();
+    if (ratio !== null) { context.strokeStyle=COLORS.active; context.lineWidth=4; context.beginPath(); context.moveTo(20,height-18); context.lineTo(20,height-18-(height-34)*ratio); context.stroke(); }
+    for (const point of memoryPoints(ratio, now/1000, release, reduceMotion())) {
+      context.globalAlpha=point.alpha; context.fillStyle=point.color; context.beginPath(); context.arc(point.x*width,point.y*height,point.radius,0,Math.PI*2); context.fill();
+    }
+    context.globalAlpha=1;
+    const counter=$('#freed-counter');
+    if(counter && state.receipt) counter.textContent=`+${Math.round(state.receipt.delta*(reduceMotion()?1:1-Math.pow(1-(state.releaseAt?release:1),3)))} MiB`;
+    if (!reduceMotion()) frame=requestAnimationFrame(draw);
+  }
+  frame=requestAnimationFrame(draw);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(frame);else startMemoryField();});
+prefersReduced.addEventListener('change',startMemoryField);
 
 function claim(id, priority, focus = false) {
   if (state.owner && state.owner.priority > priority) return false;
@@ -100,24 +136,25 @@ function heading(title, subtitle, action='') {
 }
 
 function appRow(app) {
-  return `<label class="app-row" for="select-${app.id}"><input type="checkbox" id="select-${app.id}" name="app-selection" value="${app.id}" ${state.selected.has(app.id)?'checked':''} ${state.scenario==='offline'?'disabled':''}><span class="app-symbol" aria-hidden="true">${app.symbol}</span><span><span class="app-name">${app.name}</span><span class="app-reason">${app.reason}</span></span><span class="app-memory">${formatMiB(app.memory)}<small>${state.scenario==='partial'&&app.id==='chrome'?'RSS · 일부 프로세스':'PSS · 합성값'}</small></span></label>`;
+  return `<label class="app-row" for="select-${app.id}"><input type="checkbox" id="select-${app.id}" name="app-selection" value="${app.id}" ${state.selected.has(app.id)?'checked':''} ${state.scenario==='offline'?'disabled':''}>${appImage(app)}<span><span class="app-name">${app.name}</span><span class="app-reason">${app.reason}</span></span><span class="app-memory">${formatMiB(app.memory)}<small>${state.scenario==='partial'&&app.id==='chrome'?'RSS · 일부 관측':'PSS · 합성값'}</small></span></label>`;
+}
+
+function autoCare() {
+  return `<details class="auto-care"><summary>메모리 자동 제안 · <span id="auto-state">${state.suggestions?'On':'Off'}</span><span aria-hidden="true"> ›</span></summary><div class="auto-popover"><div class="auto-top"><strong>자동 제안</strong><label class="switch"><span class="sr-only">메모리 제안 알림 사용</span><input id="suggestions" type="checkbox" ${state.suggestions?'checked':''}><span></span></label></div><label class="auto-threshold" for="threshold">제안 기준 <output id="threshold-value">${state.threshold}%</output></label><input id="threshold" type="range" min="50" max="99" value="${state.threshold}" ${state.suggestions?'':'disabled'}><p>앱은 자동 종료하지 않습니다.<br>30초 지속 · 알림 간격 10분</p></div></details>`;
 }
 
 function memoryPage() {
-  const offline = state.scenario==='offline';
-  const apps = available();
-  const count = chosen().length;
-  let content = heading('메모리', '앱을 닫기 전에, 지금 하는 일을 먼저 확인하세요.', '<button type="button" data-action="refresh">↻ 다시 관측</button>');
-  if (offline) content += '<div class="notice error">관측이 중단되었습니다. 현재 RAM과 앱 상태를 알 수 없어 닫기 요청을 사용할 수 없습니다. 시연 제어에서 기본 관측으로 돌아갈 수 있습니다.</div>';
-  if (state.scenario==='partial') content += '<div class="notice">일부 프로세스를 읽지 못했습니다. Chrome은 RSS 대체값이며 전체 메모리와 직접 합산할 수 없습니다. 읽기 실패를 0으로 처리하지 않습니다.</div>';
-  content += `<div class="memory-overview"><div><div class="memory-value">${offline?'—':state.receipt?.delta>0?'10.65':'11.25'}<span>/ 15.00 GiB</span></div><p class="memory-caption">${offline?'현재 관측값 없음':'전체 RAM의 '+metricPercent()+'% 사용 · 합성 관측'}</p><div class="memory-bar"><span class="used" style="width:${offline?0:metricPercent()}%"></span></div><div class="memory-legend"><span><i class="legend-key"></i>사용 중</span><span><i class="legend-key free"></i>사용 가능 ${offline?'—':state.receipt?.delta>0?'4.35':'3.75'} GiB</span></div></div><div class="pressure"><small>메모리 압력 · PSI</small><strong>${offline?'알 수 없음':'0.0% · 낮음'}</strong><small>최근 10초 · 시연</small></div></div>`;
-  if (state.receipt) content += `<div class="notice">최근 시연 결과: ${state.receipt.completed}개 앱의 선택 창 닫힘 관측${state.receipt.partial?' · 일부 대기 중':''}. 사용 가능 RAM 차이 +${state.receipt.delta} MiB. 특정 앱의 회수량을 뜻하지 않습니다.</div>`;
-  content += '<div class="section-heading"><h2>입력 없는 앱</h2><span class="amount">자동 선택 없음</span></div>';
-  if (!apps.length) content += '<div class="empty-state"><div class="empty-icon" aria-hidden="true">✓</div><h2>지금 제안할 앱이 없어요</h2><p>아무것도 닫을 필요가 없습니다. 작업을 이어가세요.</p><button type="button" data-action="reset">시연 처음으로</button></div>';
-  else content += `<div class="app-list" ${offline?'inert':''}>${apps.map(appRow).join('')}<p class="list-note">입력이 없었다는 사실만으로 앱이 안전하다고 판단하지 않습니다.</p></div>`;
-  content += `<div class="protected"><div class="section-heading"><h2>작업 보호</h2><span class="amount">${protectedApps.length}개 앱</span></div>${protectedApps.map(app=>`<div class="app-row"><span class="lock" aria-label="보호됨">◇</span><span class="app-symbol" aria-hidden="true">${app.symbol}</span><span><span class="app-name">${app.name}</span><span class="app-reason">${app.reason}</span></span><span class="app-memory">${app.memory}<small>PSS · 합성값</small></span></div>`).join('')}</div>`;
-  content += `<div class="action-bar"><p><strong id="selection-summary">${count?count+'개 앱 선택됨':'닫을 앱을 직접 선택하세요'}</strong><br><span id="selection-detail">${count?formatMiB(totalSelected())+' 관측 · 확보량 보장 아님':'강제 종료 없이, 정상 닫기만 요청합니다.'}</span></p><button type="button" class="primary" id="review-selection" data-action="review" ${!count||offline?'disabled':''}>선택 검토${count?' · '+count+'개':''}</button></div><p class="list-note">전체 RAM 사용률 = (MemTotal − MemAvailable) ÷ MemTotal. 앱별 PSS/RSS와 별개의 지표입니다.</p>`;
-  return content;
+  const offline = state.scenario==='offline', apps = available(), count=chosen().length;
+  const sum = apps.reduce((value,item)=>value+item.memory,0);
+  return `${heading('메모리에 여유를', '작업을 보호하고, 필요한 만큼 가볍게.')}${autoCare()}
+  ${offline?'<div class="notice error">관측 중단 · 현재 수치를 알 수 없어 닫기 요청을 사용할 수 없습니다.</div>':''}
+  ${state.scenario==='partial'?'<div class="notice">일부 관측 · Chrome은 RSS 대체값입니다. 전체 RAM과 합산하지 않습니다.</div>':''}
+  <div class="memory-stage"><div class="memory-visual"><div class="used-title">사용 중 메모리 <span>${offline?'—':metricPercent()+'%'}</span></div><canvas id="memory-field" role="img" aria-label="${offline?'관측 중단':metricPercent()+'퍼센트 사용 중인 합성 메모리의 세로 그래프와 입자'}"></canvas><div class="field-footer"><span>${offline?'—':state.receipt?.delta>0?'10.65':'11.25'} <small>/ 15.00 GiB</small></span><p>전체 RAM · MemTotal − MemAvailable<br>PSI ${offline?'미확인':'0.0% · 합성 관측'}</p></div><div class="field-legend"><i></i>세로 축은 전체 RAM 사용률<br><span>입자는 관측을 표현하며 바이트와 1:1 대응하지 않습니다.</span></div></div>
+  <div class="memory-groups"><section class="memory-group idle-group"><div class="section-heading"><h2>입력 없는 앱</h2><span class="amount">${offline?'—':formatMiB(sum)}</span></div>${apps.length?`<div class="app-list" ${offline?'inert':''}>${apps.map(appRow).join('')}</div>`:'<div class="empty-state"><h2>지금 제안할 앱이 없어요</h2><p>아무것도 닫을 필요가 없습니다.</p><button data-action="reset">시연 처음으로</button></div>'}<p class="list-note">입력 없음은 안전한 종료를 뜻하지 않습니다. 자동 선택 없음.</p></section>
+  <section class="memory-group active-group"><div class="section-heading"><h2>사용 중</h2><span class="amount">2.10 GiB</span></div>${protectedApps.map(app=>`<div class="app-row"><input type="checkbox" disabled aria-label="${app.name} 보호됨">${appImage(app)}<span><span class="app-name">${app.name}</span><span class="app-reason">${app.reason}</span></span><span class="app-memory">${app.memory}<small>PSS · 합성값</small></span></div>`).join('')}</section>
+  <section class="memory-group protected-group"><div class="section-heading"><h2>시스템 · 보호됨</h2><span class="amount">별도 관측</span></div><p>Shell · 시스템 서비스 · 매핑 불명확 앱<br><span>전체 RAM에서 앱 점유를 빼서 계산하지 않습니다.</span></p></section>
+  <section class="memory-group freed-group"><div class="section-heading"><h2>${state.receipt?'가용 메모리 변화':'정리 후 변화'}</h2><span id="freed-counter" class="amount">${state.receipt?'+'+state.receipt.delta+' MiB':'—'}</span></div><p>${state.receipt?`${state.receipt.completed}개 앱의 선택 창 닫힘 합성 관측${state.receipt.partial?' · 일부 대기':''}. 전체 시스템 관측 차이이며 특정 앱의 회수량이 아닙니다.`:'수동 닫기 요청 뒤 실제 관측 차이를 표시합니다. 아래 흐름은 합성 시연입니다.'}</p></section></div></div>
+  <div class="action-bar"><p><strong id="selection-summary">${count?count+'개 앱 선택됨':'닫을 앱을 직접 선택하세요'}</strong><br><span id="selection-detail">${count?formatMiB(totalSelected())+' 관측 · 확보량 보장 아님':'강제 종료 없이, 정상 닫기만 요청합니다.'}</span></p><button type="button" class="primary" id="review-selection" data-action="review" ${!count||offline?'disabled':''}>선택 검토${count?' · '+count+'개':''}</button></div>`;
 }
 
 function historyPage() {
@@ -137,6 +174,7 @@ function settingsPage() {
 }
 
 function renderPage(focus = false) {
+  cancelAnimationFrame(frame);
   $('#content').innerHTML = state.page==='memory'?memoryPage():state.page==='history'?historyPage():settingsPage();
   document.querySelectorAll('[data-page]').forEach(button=> {
     if(button.dataset.page===state.page) button.setAttribute('aria-current','page');
@@ -144,6 +182,7 @@ function renderPage(focus = false) {
   });
   $('#history-count').textContent = state.history.length || '';
   if(focus) $('#page-title')?.focus({preventScroll:true});
+  startMemoryField();
 }
 
 function updateSelection() {
@@ -196,7 +235,7 @@ async function simulateClose() {
   state.review=false;
   dialog.close();
   state.owner={id:'memory',priority:40};
-  state.page='history';
+  state.page='memory'; state.releaseAt=state.receipt.delta>0?performance.now():0;
   renderPage(true);
   renderDock();
   announce(`${completed.length}개 앱의 선택 창 닫힘을 합성 관측했습니다.${remaining?' 한 앱은 저장 확인 또는 응답 대기 중입니다.':''} 실제 앱은 변경하지 않았습니다.`);
@@ -230,7 +269,7 @@ function reset() {
   clearTimeout(state.goalTimer);
   state.goal=false;state.homeScore=1;state.pendingGoal=false;state.owner=null;
   state.selected.clear();state.closed.clear();state.receipt=null;state.history=[];
-  state.scenario='normal';state.page='memory';$('#scenario').value='normal';
+  state.releaseAt=0;state.scenario='normal';state.page='memory';$('#scenario').value='normal';
   renderPage();renderDock();announce('합성 시연을 처음으로 되돌렸습니다.');
 }
 
@@ -259,8 +298,8 @@ document.addEventListener('change',event=>{
   const input=event.target;
   if(input.name==='app-selection'){input.checked?state.selected.add(input.value):state.selected.delete(input.value);updateSelection();}
   if(input.id==='scenario'){state.scenario=input.value;state.selected.clear();renderPage();renderDock();announce(`${input.selectedOptions[0].textContent} 시연으로 변경했습니다.`);}
-  if(input.id==='suggestions'){state.suggestions=input.checked;renderPage();$('#suggestions')?.focus();}
-  if(input.id==='reduced-motion'){state.reducedMotion=input.checked;document.documentElement.classList.toggle('reduced-motion',input.checked);announce(input.checked?'모션을 줄였습니다.':'기본 Archsport 웹 모션을 사용합니다.');}
+  if(input.id==='suggestions'){state.suggestions=input.checked;if($('#auto-state')){$('#auto-state').textContent=input.checked?'On':'Off';$('#threshold').disabled=!input.checked;}else{renderPage();$('#suggestions')?.focus();}}
+  if(input.id==='reduced-motion'){state.reducedMotion=input.checked;document.documentElement.classList.toggle('reduced-motion',input.checked);startMemoryField();announce(input.checked?'모션을 줄였습니다.':'기본 Archsport 웹 모션을 사용합니다.');}
   if(input.id==='partial-result'||input.id==='review-partial')state.partialResult=input.checked;
   if(input.id==='acknowledge'){state.acknowledged=input.checked;$('#confirm-close').disabled=!input.checked;}
 });

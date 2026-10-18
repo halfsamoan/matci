@@ -6,6 +6,7 @@ export const BUILTIN_IDS = Object.freeze([
     'codium.desktop', 'jetbrains-idea.desktop', 'org.kde.konsole.desktop',
     'com.mitchellh.ghostty.desktop', 'Alacritty.desktop', 'kitty.desktop',
     'org.gnome.Builder.desktop', 'dev.zed.Zed.desktop', 'com.openai.Codex.desktop',
+    'org.matci.App.desktop',
 ]);
 const DEV = /(?:terminal|ptyxis|console|konsole|xterm|gnome-shell|code|codium|jetbrains|studio|emacs|vim|gedit|texteditor|builder|zed|electron|claude|codex)/i;
 export const keyOf = p => `${p.uid}:${p.pid}:${p.start_ticks}`;

@@ -78,6 +78,7 @@ export class CloseController {
                 reason_code: remaining.some(g => g.appId === item.app_id) ? 'WINDOW_REMAINS' : 'WINDOWS_CLOSED'}));
             const status = !remaining.length ? 'completed' : results.some(i => i.result === 'window_closed') ? 'partial' : 'timeout';
             const finalAck = await receipt(status, results, after);
+            this.a.onReceipt?.(finalAck.receipt);
             const delta = finalAck.receipt?.observed_delta;
             const observation = Number.isFinite(delta) ? ` 가용 메모리 차이 ${delta >= 0 ? '+' : '−'}${(Math.abs(delta) / 1048576).toFixed(0)} MiB (전체 시스템 관측값).` : '';
             this.a.onState(status, (status === 'completed' ? '선택한 창이 닫혔습니다. 백그라운드 프로세스는 남을 수 있습니다.' : '남아 있는 창이 있습니다. 취소/응답 지연을 구별할 수 없습니다.') + observation);

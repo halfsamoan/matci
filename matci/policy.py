@@ -5,6 +5,7 @@ BUILTIN_APP_IDS = frozenset({
     'org.kde.konsole.desktop', 'com.mitchellh.ghostty.desktop', 'Alacritty.desktop',
     'kitty.desktop', 'code.desktop', 'codium.desktop', 'jetbrains-idea.desktop',
     'org.gnome.Builder.desktop', 'dev.zed.Zed.desktop', 'com.openai.Codex.desktop',
+    'org.matci.App.desktop',
     'org.gnome.Ptyxis.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.gedit.desktop',
     'code-insiders.desktop', 'com.visualstudio.code.desktop',
 })
