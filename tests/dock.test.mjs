@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {DOCK_PROTOCOL, layoutNotches, canClaim, isActorWithin, isPointWithinActor,
+import {DOCK_PROTOCOL, buttonNumber, layoutNotches, canClaim, isActorWithin, isPointWithinActor,
     classifyOutsideSurface, dispatchOutsideDismiss} from '../extension/dockModel.js';
 
 const monitor = {x: 100, y: 0, width: 1280, panelHeight: 32};
@@ -34,17 +34,29 @@ test('shared dock protocol and manual tie use last-toggle ownership', () => {
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 
-test('outside right-click dismisses the open owner without claiming inside controls', () => {
+test('button extraction supports direct and tuple GI return values', () => {
+    assert.equal(buttonNumber(1), 1);
+    assert.equal(buttonNumber([true, 3]), 3);
+    assert.equal(buttonNumber([false, 0]), 0);
+});
+
+test('only outside primary and secondary clicks dismiss without claiming inside controls', () => {
     let dismissals = 0;
-    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 3,
-        active: true, expanded: true}, () => dismissals++), true);
-    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, active: true,
+    for (const button of [1, 3]) {
+        assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button,
+            active: true, expanded: true}, () => dismissals++), true);
+    }
+    for (const button of [2, 4, 5]) {
+        assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button,
+            active: true, expanded: true}, () => dismissals++), false);
+    }
+    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 1, active: true,
         expanded: true, insideDock: true}, () => dismissals++), false);
-    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, active: true,
+    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 1, active: true,
         expanded: true}, () => dismissals++, {insideOwnerTrigger: true}), false);
-    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, active: true,
+    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 1, active: true,
         expanded: true}, () => {}, {insideOwnerTrigger: false}), true);
-    assert.equal(dismissals, 1);
+    assert.equal(dismissals, 2);
 });
 
 test('captured-event hit test recognizes descendants and transformed actor bounds', () => {
@@ -69,6 +81,6 @@ test('only the active notch trigger is exempt from outside dismissal', () => {
     const otherClick = classifyOutsideSurface({dockActor: dock, ownerTrigger,
         eventSource: actor(605, 5, 5, 5, otherTrigger), x: 610, y: 10});
     assert.deepEqual(otherClick, {insideDock: false, insideOwnerTrigger: false});
-    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, active: true,
+    assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 1, active: true,
         expanded: true}, () => {}, otherClick), true);
 });
