@@ -1,5 +1,15 @@
 # 검증 기록
 
+## PR #1 polish — 2026-10-18
+
+기능 추가 없이 GTK responsive/행 상태, 단방향 scatter+fade, MiB/GiB adaptive formatting을 수정했다. JS22/22(기존20+단위 경계·단방향 이동/opacity 회귀2개) 통과. Python core/창 닫기 정책은 변경하지 않았다.
+
+GTK4.6/Xvfb에서900×720와480×720,390×720 시작 및900→390/480→900 mapped 창 resize를 실행했다. 최종 logical allocation890×710/380×710, column↔stack/상단 rail 전환과 고정 action 가시성을 확인했다. GTK가 첫 resize를 이전 최소 크기로 제한하는 점을 재현했고 레이아웃 전환 후 두 번째 drag step까지 검수했다. `G_DEBUG=fatal-criticals` 상태로 popover/GSettings(memory) 및 합성 checkbox 선택·focus·hover 렌더 검사도 통과했다. 실제 pointer/GNOME50 검수가 아니다.
+
+Chromium에서 닫기 합성 시연→counter 완료→확산 종료 뒤에도 기본 field가 남는지(축을 제외한 영역의 입자2006pixels) 확인했다. 모션 감소와390px overflow0 확인, 콘솔 오류/경고0. outgoing 층은 최대80개이며 기본320개 field와 분리되어 돌아오지 않는다. 캡처는 docs/screenshots/native-gtk-{v2,narrow,interaction}.png.
+
+**실제 GNOME50·150% 시각 검수는 미실행.** 현재 Windows/WSL에 접근 가능한 GNOME50 실기 세션이 없다. WSL20.04의3.36.9 바이너리는 해당 검수 환경이 아니다. `../docs/GNOME50_VISUAL_QA.md`의 checkbox/rail/popover/설치 앱 아이콘 항목을 미검증으로 유지한다. Draft 유지, Disk/Organize 기능 추가 없음.
+
 ## 디자인 V2 — 2026-10-18 추가 검증
 
 - Windows Python44개:42통과/2POSIX·symlink skip. WSL Ubuntu22.04 Python3.10:44/44. Launcher 업그레이드→pre-GTK rollback과 사용자 바로가기 보존2개 검증을 추가했다. 기존 core 안전 정책은 유지했다.

@@ -63,6 +63,8 @@ Archsport도 최신 공존 버전을 설치한다. `DUAL_NOTCH.md` 참조. 켜�
 
 ## 실제 장치 P0
 
+PR #1 후속 polish의 GNOME50/150% 체크리스트와 현재 환경 한계는 `GNOME50_VISUAL_QA.md`를 따른다. WSL GTK4.6 resize/합성 상태 캡처는 실기 통과가 아니다.
+
 V2 추가: desktop launcher→GTK 창, 설치 앱 GIcon, popover→같은 GSettings 반영, 큰 창/노치 검토 상호 무효화, 클라이언트 종료·worker 재시작 뒤 nonce 거부, 실제 저장 취소/부분 결과/음수 delta, 잠금·절전·125/150%와 고정 action 접근을 확인한다.
 
 `replica/test-plan.md` P0-01–15를 장치/GNOME/Wayland/배율/실행일/증거와 함께 기록한다. 먼저 read-only 수치와 패널 위치, 두 노치 토글을 확인한다. 정상 닫기는 버릴 수 있는 테스트 GUI 앱에서 시작하고 문서 저장 취소도 확인한다.

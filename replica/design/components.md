@@ -4,6 +4,8 @@
 
 MemoryField: Canvas/Gtk.DrawingArea가 같은 point model을 사용한다. 세로 축·최대320입자·양의 관측 변화 후1.6초 확산/counter, 모션 감소 시 정지/즉시 값. 점은 바이트와1:1 대응하지 않는다. 브라우저 hidden/화면 이동 때 RAF 중지, GTK는 활성 메모리 창에서만 redraw한다.
 
+후속 변경: 왕복 sine 대신 단조 ease-out outgoing 층(최대80입자)의 scatter+fade를 사용한다. 기본 field는 새 밀도로 남으며 사라진 입자를 원위치로 돌리지 않는다. GTK 행은 hover/선택 배경/라임 focus와 checkbox 상태를 구분한다. MiB/GiB adaptive formatting은 정확히1GiB에서 단위를 바꾸며 작은 양수는 `<1 MiB`,누락은 확인 불가다.
+
 AutoCarePopover: 토글+50–99 slider+정책 설명, 기본off·키보드 조작·자동 닫기 없음. GTK는 GSettings, 웹은 시연 상태다. GTK demo/smoke는 설정도 memory backend다.
 
 | 컴포넌트 | variants / 상태 | 상호작용·접근성 | 사용 화면 |

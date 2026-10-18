@@ -2,7 +2,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import {COLORS, memoryPoints} from './visualModel.js';
+import Pango from 'gi://Pango';
+import {COLORS, memoryPoints, formatBytes as bytes} from './visualModel.js';
 
 // Installed beside the extension modules. No worker, process collector or OS-close API.
 const root = Gio.File.new_for_uri(import.meta.url).get_parent().get_parent().get_path();
@@ -10,15 +11,17 @@ const demo = ARGV.includes('--demo') || ARGV.includes('--smoke');
 const smoke = ARGV.includes('--smoke');
 if (demo) GLib.setenv('GSETTINGS_BACKEND', 'memory', true);
 const app = new Gtk.Application({application_id: 'org.matci.App', flags: 0});
-const bytes = value => Number.isFinite(value) ? `${(value / 1073741824).toFixed(2)} GiB` : '확인 불가';
 const percent = value => Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—';
 let win, content, graph, metric, notice, action, list, heading, autoButton, settings, dialog, graphCaption, footerHost;
 let page = 'memory', current = {mode:'offline', apps:[], memory:null}, selected = new Set();
 let polling = false, disposed = false, modal = false, pollTimer = 0, animationTimer = 0, drawCount = 0;
 let releaseAt = 0, receiptKey = '', points = [], sampleId = null, generation = 0, resultMetric = null;
 let installedApps = new Map();
+let shellLayout, navRail, memoryStage, visualization, actionRow, footerNote;
+let stacked = null, narrow = null;
+let smokeRows=[];
 const label = (text, css = '', wrap = false) => {
-    const widget = new Gtk.Label({label:String(text), xalign:0, wrap, hexpand:true});
+    const widget = new Gtk.Label({label:String(text), xalign:0, wrap, hexpand:true, wrap_mode:Pango.WrapMode.WORD_CHAR});
     if (css) widget.add_css_class(css); return widget;
 };
 const box = (vertical = true, spacing = 0) => new Gtk.Box({orientation:vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL, spacing});
@@ -71,25 +74,44 @@ function autoPopover() {
     popover.set_child(body); popover._matciToggle=toggle; popover._matciSlider=slider; return popover;
 }
 function autoTitle() { if (autoButton) autoButton.label = `메모리 자동 제안 · ${settings?.get_boolean('auto-suggestions') ? 'On' : 'Off'}  ›`; }
+function responsive(force = false) {
+    const width = win.get_width() || 480;
+    const nextStacked = width < 820, nextNarrow = width < 700;
+    if (!force && nextStacked === stacked && nextNarrow === narrow) return;
+    stacked = nextStacked; narrow = nextNarrow;
+    for (const [active, css] of [[stacked,'stacked'],[narrow,'narrow']])
+        active ? win.add_css_class(css) : win.remove_css_class(css);
+    shellLayout.orientation = narrow ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL;
+    navRail.orientation = narrow ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL;
+    navRail.hexpand = narrow;
+    if (page === 'memory' && memoryStage) {
+        memoryStage.orientation = stacked ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL;
+        visualization.hexpand = stacked; graph.hexpand = stacked;
+        graph.content_width = stacked ? 1 : 230; graph.content_height = stacked ? 220 : 330;
+        actionRow.orientation = narrow ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL;
+    }
+}
 function memoryPage() {
     clear(content); clear(footerHost);
-    heading = label('메모리에 여유를', 'hero-title'); content.append(heading);
+    heading = label('메모리에 여유를', 'hero-title', true); content.append(heading);
     autoButton = new Gtk.MenuButton({halign:Gtk.Align.START}); autoButton.add_css_class('auto-trigger');
     autoButton.set_popover(autoPopover()); autoTitle(); content.append(autoButton);
     notice = label('', 'muted', true); content.append(notice);
-    const stage = box(false, 30); content.append(stage);
-    const visualization = box(true, 12); visualization.add_css_class('visualization'); visualization.hexpand = false;
+    memoryStage = box(false, 30); content.append(memoryStage);
+    visualization = box(true, 12); visualization.add_css_class('visualization'); visualization.hexpand = false;
     const values = box(true, 10); values.valign = Gtk.Align.CENTER; values.set_size_request(150, -1);
     values.append(label('사용 중 메모리', 'active')); metric = label('—', 'big-number'); values.append(metric);
     visualization.append(values);
     graph = new Gtk.DrawingArea({hexpand:false, content_height:330, content_width:230});
     graph.set_draw_func((_area, cr, width, height) => { try { draw(cr, width, height); drawCount++; } finally { cr.$dispose(); } });
-    visualization.append(graph); graphCaption = label('', 'muted', true); visualization.append(graphCaption); stage.append(visualization);
-    list = box(true, 24); list.hexpand = true; list.add_css_class('app-list'); stage.append(list);
-    const footer = box(false, 16); footer.add_css_class('action-bar');
-    footer.append(label('직접 선택 · 정상 닫기만 요청\n앱 점유는 확보 보장량이 아닙니다.', 'muted'));
-    action = button('선택 검토', review, 'suggested-action'); footer.append(action); footerHost.append(footer);
-    footerHost.append(label('창 PID에 귀속된 PSS/RSS만 관측합니다. 전체 앱·탭 점유가 아닙니다.', 'muted'));
+    visualization.append(graph); graphCaption = label('', 'muted', true); visualization.append(graphCaption); memoryStage.append(visualization);
+    list = box(true, 24); list.hexpand = true; list.add_css_class('app-list'); memoryStage.append(list);
+    actionRow = box(false, 16); actionRow.add_css_class('action-bar');
+    actionRow.append(label('직접 선택 · 정상 닫기만 요청\n앱 점유는 확보 보장량이 아닙니다.', 'muted'));
+    action = button('선택 검토', review, 'suggested-action'); actionRow.append(action); footerHost.append(actionRow);
+    footerNote=label('창 PID의 PSS/RSS 관측 · 전체 앱·탭 점유가 아닙니다.', 'muted');
+    footerNote.ellipsize=Pango.EllipsizeMode.END; footerNote.tooltip_text=footerNote.label; footerHost.append(footerNote);
+    responsive(true);
     renderMemory();
 }
 function renderMemory() {
@@ -101,6 +123,7 @@ function renderMemory() {
     const focusedId = win.get_focus()?._matciAppId;
     let restoreFocus = null;
     clear(list);
+    if (smoke) smokeRows=[];
     resultMetric = null;
     for (const [section, title] of [['idle','입력 없는 앱'], ['active','사용 중'], ['protected','시스템 · 작업 보호']]) {
         const apps = (current.apps ?? []).filter(item => item.section === section);
@@ -116,11 +139,20 @@ function renderMemory() {
             const check = new Gtk.CheckButton({active:selected.has(item.app_id), valign:Gtk.Align.CENTER});
             check._matciAppId = item.app_id;
             check.sensitive = !demo && !item.reason && !current.busy && !modal && current.mode === 'live';
+            if (smoke && ARGV.includes('--states') && !item.reason) check.sensitive=true;
             if (focusedId === item.app_id && check.sensitive) restoreFocus = check;
-            check.connect('toggled', () => { check.active ? selected.add(item.app_id) : selected.delete(item.app_id); updateAction(); });
+            const selectionStyle = () => check.active ? row.add_css_class('row-selected') : row.remove_css_class('row-selected');
+            selectionStyle();
+            const focus = new Gtk.EventControllerFocus();
+            focus.connect('enter',()=>row.add_css_class('row-focused'));
+            focus.connect('leave',()=>row.remove_css_class('row-focused')); row.add_controller(focus);
+            check.connect('toggled', () => { check.active ? selected.add(item.app_id) : selected.delete(item.app_id); selectionStyle(); updateAction(); });
+            if (!check.sensitive) row.add_css_class('row-protected');
+            if (smoke) smokeRows.push({row,check});
+            check.tooltip_text = item.reason ?? `${item.name} 선택 · 창 ${item.windows}개`;
             row.append(check); row.append(appIcon(item.app_id));
             const description = box(true, 3); description.hexpand = true;
-            description.append(label(item.name, 'app-name'));
+            const name=label(item.name, 'app-name'); name.ellipsize=Pango.EllipsizeMode.END; name.width_chars=1; name.tooltip_text=item.name; description.append(name);
             const age = Number.isFinite(item.input_age_ms) ? `최근 입력 ${Math.floor(item.input_age_ms / 60000)}분 전` : '최근 입력 시각 미확인';
             description.append(label(item.reason ?? `${age} · ${item.windows}개 창 · 자동 선택 없음`, 'muted', true)); row.append(description);
             const amountBox = box(true, 3); amountBox.hexpand = false; amountBox.append(label(bytes(item.memory_bytes), 'app-memory'));
@@ -144,7 +176,7 @@ function updateAction() {
     action.sensitive = !demo && current.mode === 'live' && !current.busy && !modal && selected.size > 0;
 }
 async function review() {
-    if (modal || current.busy || !selected.size) return;
+    if (demo || modal || current.busy || !selected.size) return;
     modal = true; list.sensitive=false; autoButton.sensitive=false; updateAction();
     let token = null;
     try {
@@ -177,7 +209,10 @@ function draw(cr, width, height) {
     if (Number.isFinite(ratio)) {
         setColor(cr, COLORS.active); cr.setLineWidth(4); cr.moveTo(14,height-12); cr.lineTo(14,height-12-(height-24)*ratio); cr.stroke();
     }
-    for (const point of memoryPoints(ratio, now, release, !motion())) {
+    const field = memoryPoints(ratio, now, 0, !motion());
+    if (release > 0 && release < 1)
+        field.push(...memoryPoints(ratio, releaseAt, release).filter((_point,index)=>index%4===0));
+    for (const point of field) {
         setColor(cr, point.color, point.alpha); cr.arc(point.x*width,point.y*height,point.radius,0,2*Math.PI); cr.fill();
     }
     if (points.length > 1) {
@@ -238,15 +273,16 @@ app.connect('activate', () => {
     try { settings = getSettings(); } catch (_error) { settings = null; }
     const provider = new Gtk.CssProvider(); provider.load_from_path(`${root}/app/style.css`);
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-    win = new Gtk.ApplicationWindow({application:app, title:'matci', default_width:1000, default_height:820}); win.add_css_class('matci');
+    const size = smoke ? ARGV.find(arg=>/^--size=\d+x\d+$/.test(arg))?.slice(7).split('x').map(Number) : null;
+    win = new Gtk.ApplicationWindow({application:app, title:'matci', default_width:size?.[0] ?? 900, default_height:size?.[1] ?? 720}); win.add_css_class('matci');
     const header = new Gtk.HeaderBar(); header.set_title_widget(label(demo ? 'matci · 합성 디자인 시연' : 'matci · 메모리', 'window-title')); win.set_titlebar(header);
-    const layout = box(false); win.set_child(layout); const rail = box(true,14); rail.hexpand=false; rail.add_css_class('rail'); layout.append(rail);
+    shellLayout = box(false); win.set_child(shellLayout); navRail=box(true,14); navRail.hexpand=false; navRail.add_css_class('rail'); shellLayout.append(navRail);
     for (const [id,title,icon] of [['memory','메모리','media-flash-symbolic'],['history','기록','document-open-recent-symbolic'],['settings','설정','emblem-system-symbolic']]) {
         const nav = new Gtk.Button(), inner = box(true,5); inner.append(new Gtk.Image({icon_name:icon,pixel_size:26})); inner.append(label(title)); nav.set_child(inner);
         if (id === page) nav.add_css_class('nav-active');
-        nav.connect('clicked', () => { if (modal) return; page=id; for (let child=rail.get_first_child();child;child=child.get_next_sibling()) child.remove_css_class('nav-active'); nav.add_css_class('nav-active'); ({memory:memoryPage,history:historyPage,settings:settingsPage})[page](); }); rail.append(nav);
+        nav.connect('clicked', () => { if (modal) return; page=id; for (let child=navRail.get_first_child();child;child=child.get_next_sibling()) child.remove_css_class('nav-active'); nav.add_css_class('nav-active'); ({memory:memoryPage,history:historyPage,settings:settingsPage})[page](); }); navRail.append(nav);
     }
-    const right = box(true); right.hexpand=true; layout.append(right);
+    const right = box(true); right.hexpand=true; right.vexpand=true; shellLayout.append(right);
     const scroll = new Gtk.ScrolledWindow({hexpand:true, vexpand:true, hscrollbar_policy:Gtk.PolicyType.NEVER}); right.append(scroll);
     content = box(true,16); content.add_css_class('content'); scroll.set_child(content);
     footerHost=box(true,8); footerHost.add_css_class('footer-host'); right.append(footerHost);
@@ -258,6 +294,7 @@ app.connect('activate', () => {
     memoryPage(); win.present(); poll();
     pollTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT,2, () => { poll(); return GLib.SOURCE_CONTINUE; });
     animationTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT,33, () => {
+        responsive();
         if (page==='memory' && win.is_active && motion() && Number.isFinite(current.memory?.used_ratio)) {
             graph.queue_draw();
             if (resultMetric && releaseAt) {
@@ -275,6 +312,18 @@ app.connect('activate', () => {
         GLib.timeout_add(GLib.PRIORITY_DEFAULT,300,()=>{popover.popdown();return GLib.SOURCE_REMOVE;});
         return GLib.SOURCE_REMOVE;
     });
+    const resize = smoke ? ARGV.find(arg=>/^--resize=\d+x\d+$/.test(arg))?.slice(9).split('x').map(Number) : null;
+    if (resize) GLib.timeout_add(GLib.PRIORITY_DEFAULT,700,()=>{
+        win.set_default_size(...resize);
+        // A second drag step applies the target after GTK has switched layout constraints.
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT,150,()=>{win.set_default_size(...resize);return GLib.SOURCE_REMOVE;});
+        return GLib.SOURCE_REMOVE;
+    });
+    if (smoke && ARGV.includes('--states')) GLib.timeout_add(GLib.PRIORITY_DEFAULT,850,()=>{
+        smokeRows[0].check.active=true; smokeRows[0].check.grab_focus();
+        smokeRows[1].row.set_state_flags(Gtk.StateFlags.PRELIGHT,false);
+        return GLib.SOURCE_REMOVE;
+    });
     if (smoke) GLib.timeout_add(GLib.PRIORITY_DEFAULT,1200, () => {
         if (ARGV.includes('--capture')) {
             const paintable = Gtk.WidgetPaintable.new(win), snapshot = new Gtk.Snapshot();
@@ -285,7 +334,12 @@ app.connect('activate', () => {
             const texture = win.get_renderer().render_texture(node,null);
             texture.save_to_png(`${root}/docs/screenshots/native-gtk-v2.png`);
         }
-        print(JSON.stringify({gtk4:true,drawn:drawCount>0,popover:popoverChecked,demo:true})); win.close(); return GLib.SOURCE_REMOVE;
+        const [allocated,bounds]=action.compute_bounds(win);
+        print(JSON.stringify({gtk4:true,drawn:drawCount>0,popover:popoverChecked,demo:true,
+            width:win.get_width(),height:win.get_height(),stacked,narrow,
+            row_states:!ARGV.includes('--states') || (smokeRows[0].row.has_css_class('row-selected') && smokeRows[0].row.has_css_class('row-focused') && Boolean(smokeRows[1].row.get_state_flags() & Gtk.StateFlags.PRELIGHT) && !action.sensitive),
+            action_visible:allocated && bounds.get_y()>=0 && bounds.get_y()+bounds.get_height()<=win.get_height()}));
+        win.close(); return GLib.SOURCE_REMOVE;
     });
 });
 app.run([]);

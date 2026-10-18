@@ -23,5 +23,7 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq gjs gir1.2-gtk-4.0 xvfb dbus-x11
       - run: dbus-run-session -- gjs -m tests/desktop-service.integration.js
       - run: python tools/smoke_gtk.py
+      - run: python tools/smoke_gtk.py --size 900x720 --resize 390x720
+      - run: python tools/smoke_gtk.py --size 480x720 --resize 900x720 --states
       - run: python -m matci --mode demo --once --state-dir /tmp/matci-ci-demo
       - run: python tools/package_extension.py

@@ -49,7 +49,9 @@ function startMemoryField() {
     const release = state.releaseAt && !reduceMotion() ? Math.min(1,(now-state.releaseAt)/1600) : 0;
     context.lineWidth = 3; context.strokeStyle = '#303630'; context.beginPath(); context.moveTo(20,16); context.lineTo(20,height-18); context.stroke();
     if (ratio !== null) { context.strokeStyle=COLORS.active; context.lineWidth=4; context.beginPath(); context.moveTo(20,height-18); context.lineTo(20,height-18-(height-34)*ratio); context.stroke(); }
-    for (const point of memoryPoints(ratio, now/1000, release, reduceMotion())) {
+    const field = memoryPoints(ratio,now/1000,0,reduceMotion());
+    if(release>0 && release<1) field.push(...memoryPoints(ratio,state.releaseAt/1000,release).filter((_point,index)=>index%4===0));
+    for (const point of field) {
       context.globalAlpha=point.alpha; context.fillStyle=point.color; context.beginPath(); context.arc(point.x*width,point.y*height,point.radius,0,Math.PI*2); context.fill();
     }
     context.globalAlpha=1;

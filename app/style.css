@@ -13,7 +13,15 @@ window.matci, .matci headerbar { background: #050705; color: #f4f4f2; }
 .auto-popover { padding: 20px; min-width: 280px; }
 .matci popover contents { background: #1b201c; color: #f4f4f2; border: 1px solid #444c44; border-radius: 20px; }
 .matci .section-title, .auto-popover .section-title { font-size: 16px; font-weight: 600; }
-.matci .app-row { padding: 5px 0; }
+.matci .app-row { padding: 8px; border-radius: 10px; border: 1px solid transparent; }
+.matci .app-row:hover:not(.row-protected) { background: #141c10; }
+.matci .app-row.row-selected { background: #1a270d; border-color: #435d20; }
+.matci .app-row.row-selected:hover { background: #223511; }
+.matci .app-row.row-focused { box-shadow: inset 0 0 0 2px #b9ff29; }
+.matci checkbutton check { background: #10150d; border: 1px solid #87947a; color: #10140a; border-radius: 4px; }
+.matci checkbutton check:checked { background: #b9ff29; border-color: #b9ff29; color: #10140a; }
+.matci checkbutton:focus-visible { outline: 2px solid #b9ff29; outline-offset: 3px; border-radius: 5px; }
+.matci checkbutton:disabled check { background: #151a14; border-color: #4c5546; }
 .matci .app-name { font-size: 14px; font-weight: 600; }
 .matci .app-memory { font-size: 13px; }
 .matci .muted, .auto-popover .muted { color: #a0a3a6; font-size: 12px; }
@@ -28,3 +36,10 @@ window.matci, .matci headerbar { background: #050705; color: #f4f4f2; }
 .matci .suggested-action:disabled { background: #20271a; color: #a0a3a6; }
 .matci .history-entry { padding: 20px 0; }
 .review-body { padding: 24px; }
+.matci.stacked .hero-title { font-size: 36px; }
+.matci.narrow .rail { min-width: 0; padding: 8px; }
+.matci.narrow .rail button { padding: 8px 12px; }
+.matci.narrow .content { padding: 20px; }
+.matci.narrow .footer-host { padding: 0 20px 16px; }
+.matci.narrow .action-bar { padding-top: 12px; }
+.matci.narrow .hero-title { font-size: 30px; }
