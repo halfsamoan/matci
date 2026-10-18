@@ -29,7 +29,7 @@ export default class MatciPreferences extends ExtensionPreferences {
         source.add(threshold);
         const notch = new Adw.PreferencesGroup({title: '두 노치', description: 'Archsport와 같은 320ms 모션. 패널 아래에서 나란히 배치하며 공간이 부족하면 RAM 패널 버튼으로 진입합니다. 시스템 애니메이션 끄기를 따릅니다.'});
         page.add(notch);
-        switchRow(notch, 'show-notch', '노치 표시');
+        switchRow(notch, 'show-notch', '상세 오버레이 표시');
         switchRow(notch, 'hide-fullscreen', '전체화면에서 숨기기');
         const count = Math.min(32, Gdk.Display.get_default()?.get_monitors().get_n_items() ?? 1);
         const monitor = new Adw.ComboRow({title: '표시 모니터', model: Gtk.StringList.new(['기본 모니터', ...Array.from({length: count}, (_, i) => `모니터 ${i + 1}`)]),

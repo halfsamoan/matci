@@ -44,7 +44,7 @@ export default class Matci extends Extension {
             accessible_name: 'matci 메모리 노치'});
         this._root.connect('key-press-event', (_actor, event) => {
             if (event.get_key_symbol() === Clutter.KEY_Escape) {
-                this._collapse(); this._indicator.grab_key_focus(); return Clutter.EVENT_STOP;
+                this._collapse(true); return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -55,20 +55,21 @@ export default class Matci extends Extension {
             staleIndicator.destroy();
         }
         this._indicator = new PanelMenu.Button(0.0, 'matci 메모리');
+        this._indicator.add_style_class_name('matci-panel-button');
         const panelStatus = new St.BoxLayout({style_class: 'matci-panel-status'});
         this._indicatorIcon = new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 14});
-        this._indicatorLabel = new St.Label({text: 'RAM', y_align: Clutter.ActorAlign.CENTER});
+        this._indicatorLabel = new St.Label({text: '—', y_align: Clutter.ActorAlign.CENTER});
         panelStatus.add_child(this._indicatorIcon);
         panelStatus.add_child(this._indicatorLabel);
         this._indicator.add_child(panelStatus);
-        this._indicator.menu.addAction('메모리 노치 열기', () => this._expand(true));
-        this._indicator.menu.addAction('matci 설정 · 기록', () => this.openPreferences());
-        this._indicator.menu.addAction('관측 다시 연결', () => this._restartWorker());
+        this._connect(this._indicator.menu, 'open-state-changed', (_menu, isOpen) => {
+            if (!isOpen) return;
+            this._indicator.menu.close();
+            if (this._expanded) this._collapse(true); else this._expand(true);
+        });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._dock = new DockParticipant({id: this.uuid, actor: this._root, monitor: () => this._monitor(), order: 1,
-            onYield: () => this._collapse(), onPlacement: placement => {
-                this._indicatorLabel.text = placement.fallback ? percent(this._snapshot?.memory?.used_ratio) : 'RAM';
-            }});
+            onYield: () => this._collapse()});
         this._actions = new CloseController({snapshot: () => this._snapshot,
             uuid: () => GLib.uuid_string_random(), now: () => this._now(),
             protection: (g, s) => this._protection(g, s), groups: s => this._groups(s),
@@ -100,13 +101,18 @@ export default class Matci extends Extension {
     }
     _now() { return GLib.get_monotonic_time() / 1000; }
     _connect(object, signal, callback) { this._signals.push([object, object.connect(signal, callback)]); }
+    _updatePanel() {
+        const value = percent(this._snapshot?.memory?.used_ratio);
+        this._indicatorLabel.text = value;
+        this._indicator.accessible_name = `matci RAM ${value}. 상세 ${this._expanded ? '접기' : '열기'}`;
+    }
     _monitor() { return Main.layoutManager.monitors[this._settings.get_int('monitor-index')] ?? Main.layoutManager.primaryMonitor; }
     _visibility() {
         if (!this._enabled || !this._dock) return;
         const visible = this._settings.get_boolean('show-notch') && this._expanded && !this._sleeping && !Main.overview.visible &&
             !Main.sessionMode.isLocked && !(this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen);
-        const width = Math.min(this._expanded ? 500 : 190, Math.max(1, (this._monitor()?.width ?? 800) - 24));
-        const height = this._expanded ? (this._contentHeight ?? 240) : 46;
+        const width = Math.min(500, Math.max(1, (this._monitor()?.width ?? 800) - 24));
+        const height = this._expanded ? (this._contentHeight ?? 240) : 1;
         const changed = this._geometry?.width !== width || this._geometry?.height !== height;
         if (changed) {
             this._root.remove_all_transitions();
@@ -129,10 +135,11 @@ export default class Matci extends Extension {
         this._expanded = true; this._render();
         if (manual) this._root.grab_key_focus();
     }
-    _collapse() {
+    _collapse(restoreFocus = false) {
         this._expanded = false;
         if (!this._actions?.busy) this._actions?.cancel();
         this._selected.clear(); this._render();
+        if (restoreFocus) this._indicator.grab_key_focus();
     }
     _label(text, style = 'matci-caption') {
         const label = new St.Label({text: String(text), style_class: style, x_expand: true});
@@ -201,20 +208,11 @@ export default class Matci extends Extension {
         for (const child of this._root.get_children()) child.destroy();
         this._root.remove_style_class_name('matci-expanded');
         if (this._expanded) this._root.add_style_class_name('matci-expanded');
+        this._updatePanel();
         const snapshot = this._snapshot;
         const memory = snapshot?.memory;
         const demo = snapshot?.mode === 'demo';
-        if (!this._expanded) {
-            const compact = new St.Button({style_class: 'matci-compact', can_focus: true,
-                accessible_name: `matci RAM ${percent(memory?.used_ratio)}${demo ? ', 시연 모드' : ''}. 상세 열기`});
-            const content = new St.BoxLayout({style_class: 'matci-compact-content'});
-            content.add_child(new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}));
-            content.add_child(this._label(percent(memory?.used_ratio), 'matci-compact-value'));
-            if (demo) content.add_child(this._label('DEMO', 'matci-state-demo'));
-            compact.set_child(content);
-            compact.connect('clicked', () => this._expand(true));
-            this._root.add_child(compact);
-        } else {
+        if (this._expanded) {
             const header = new St.BoxLayout({style_class: 'matci-header'});
             const brand = new St.BoxLayout({style_class: 'matci-brand'});
             brand.add_child(new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}));
@@ -226,7 +224,7 @@ export default class Matci extends Extension {
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
             tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this.openPreferences()));
-            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse()));
+            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true)));
             header.add_child(tools);
             this._root.add_child(header);
 
@@ -349,9 +347,7 @@ export default class Matci extends Extension {
             }, 0);
             this._contentHeight = Math.min(350, Math.max(190,
                 Math.ceil(childHeight + Math.max(0, children.length - 1) * 8 + 27)));
-        } else {
-            this._contentHeight = 46;
-        }
+        } else this._contentHeight = 1;
         this._visibility();
     }
     _review() {
@@ -444,6 +440,7 @@ export default class Matci extends Extension {
             if (this._session && message.session_id !== this._session) throw new Error('session changed');
             this._session = message.session_id;
             this._snapshot = message;
+            this._updatePanel();
             this._receivedAt = this._now();
             if (++this._goodSamples >= 3) this._failures = 0;
             if (!this._actions.busy && !this._actions.review) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :

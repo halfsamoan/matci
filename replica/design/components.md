@@ -4,7 +4,8 @@
 
 | 컴포넌트 | variants / 상태 | 상호작용·접근성 | 사용 화면 |
 |---|---|---|---|
-| Notch | compact/expanded/event/hidden, live/stale/sync/demo | compact는 아이콘과 핵심 수치, expanded는 헤더·상태 배지·작업 영역. 키보드 조작과 접근 가능한 상태 이름 | S04 |
+| Panel RAM indicator | idle/expanded, live/stale/unknown | 상시 아이콘과 사용률, 패널 활성화로 overlay를 열고 닫으며 접근 가능한 상태 이름 제공 | S04 |
+| Notch overlay | expanded/event/hidden, live/stale/sync/demo | 사용자가 열거나 필요한 이벤트 때만 표시. 키보드 조작과 접근 가능한 상태 이름 | S04 |
 | MemoryMeter | normal/high/unknown/partial | 사용 가능 RAM 기준 명시, 색 외 텍스트, null이면 값 없음 | S02/S04 |
 | AppRow | unselected/selected/protected/unknown/gone | 한 줄 앱명·창 수·PSS/RSS·표본/입력 시각, 선택 아이콘, 보호 이유 | S02 |
 | ReasonChip | protected/working/unmapped/permission | 아이콘/문자 동시, 툴팁만으로 중요 이유 전달하지 않음 | S02 |

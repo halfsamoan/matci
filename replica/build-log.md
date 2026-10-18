@@ -2,7 +2,7 @@
 
 2026-10-18 후속 구현: M1 웹 시연, M2 Linux read-only worker/GNOME 소스, M3 수동 닫기 gate/영속 기록/제안 소스를 구현했다. S01–S05는 소스와 합성 시연이 존재하며 실제 GNOME 검수 전이므로 완성된 호환 제품으로 판정하지 않는다. S06–S08은 후속이다. 현재 상태는 README와 docs/LINUX_HANDOFF.md를 따른다.
 
-두 노치는 공유 registry/geometry로 한 중앙 그룹을 이루며 수동100/경기80/제안30, 폭 부족 시 패널 fallback을 구현했다. 초기 왼쪽 슬롯 초안을 대체하는 사용자 후속 요청이다. GUI에서 닫기를 실제 실행한 적은 없으며 JS↔Python 통합은 synthetic window callback이다.
+초기 버전은 두 노치가 공유 registry/geometry로 한 중앙 그룹을 이루도록 구현했다. 2026-10-18 제품 명세에 따라 matci는 대기 중 패널 RAM 표시만 제공하며, 패널 입력으로 expanded overlay를 연다. Archsport는 경기 상태에서만 표면을 표시한다. GNOME 창 닫기 실검수는 아직 없으며 JS↔Python 통합은 synthetic window callback이다.
 
 아래는 초기 계획 당시의 기록이다.
 

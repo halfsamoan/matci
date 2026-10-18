@@ -53,7 +53,7 @@ UI 공통: 빈 목록/loading/error/권한/긴 텍스트/키보드/Escape/focus 
 | P0-08 | worker 종료·EOF·깨진 JSON | backoff, 오류 표시, 늦은 callback 무효 |
 | P0-09 | 125/150%·외부 모니터 재연결 | 패널 아래, 텍스트 clipping 없음, 모니터 fallback |
 | P0-10 | fullscreen/overview/lock | 정책대로 숨김, 복귀 중복 없음 |
-| P0-11 | Archsport 동시 compact/expand/event | 충돌 없는 슬롯 또는 아이콘 fallback, 패널 클릭 유지 |
+| P0-11 | matci 패널 진입 + Archsport 경기 표면 동시 사용 | matci idle panel-only, 수동 overlay 우선, click-through와 충돌 fallback 확인 |
 | P0-12 | 모션 on/off·키보드 | native320ms와 0ms, focus 복귀 |
 | P0-13 | 30분 관측 | CPU/RSS·샘플 주기 비용 측정, 목표 미달 시 조정 |
 | P0-14 | 로그아웃/로그인·upgrade/rollback | 한 worker, 사용자 DB/설정 보존 |

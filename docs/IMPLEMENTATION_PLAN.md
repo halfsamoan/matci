@@ -1,6 +1,6 @@
 # matci 최종 작업 계획
 
-> 초기 설계 기록이다. 후속 사용자 요청으로 M1–M3 소스 구현과 공개 GitHub 업로드까지 범위를 확장했다. 현재 구현·검증 상태와 중앙 그룹 방식의 두 노치 공존 계약은 `LINUX_HANDOFF.md`, `DUAL_NOTCH.md`, `../replica/verification.md`를 따른다. Ubuntu GNOME 실기 P0와 M4/M5는 완료되지 않았다. Archsport와 matci는 각각 독립 앱·저장소다.
+> 초기 설계 기록이다. 후속 사용자 요청으로 M1–M3 소스 구현과 공개 GitHub 업로드까지 범위를 확장했다. 최신 제품 결정은 matci 패널-only idle과 사용자 입력 overlay이며, 세부 내용은 `LINUX_HANDOFF.md`, `DUAL_NOTCH.md`, `../replica/verification.md`를 따른다. Ubuntu GNOME 실기 P0와 M4/M5는 완료되지 않았다. Archsport와 matci는 각각 독립 앱·저장소다.
 
 2026-10-18 · 포트폴리오 02 · **공개 자료·이미지 기반 조사와 1차 설계 완료, 구현 전**
 
@@ -56,7 +56,7 @@ Shell의 앱 매핑/분류는 `record_app_view`로 해당 sample_id에 연결해
 
 ## 5. 노치와 동시 사용
 
-GNOME은 Archsport 실제 구현의 compact 360×46, expanded 500×250, 320ms EASE_OUT_CUBIC, 아래쪽 radius 26, 패널 높이만큼 내려 배치하는 동작을 기준으로 삼는다. 웹은 원본 프리뷰의 compact 336×46, expanded 460×224, event 460×144와 420ms 곡선을 유지한다. 두 환경의 차이를 숨기지 않는다. 상세 발췌와 출처 해시는 `replica/design/archsport-motion.json`에 있다.
+GNOME에서 Archsport는 경기 상태일 때만 compact 280×46 및 expanded overlay를 사용한다. matci idle에는 compact surface가 없고 패널 RAM 항목만 보인다. 두 확장 overlay는 320ms EASE_OUT_CUBIC, 패널 아래·`affectsStruts:false`를 따른다. 웹 수치는 합성 프리뷰에 한정한다. 상세 발췌와 출처 해시는 `replica/design/archsport-motion.json`에 있다.
 
 Archsport를 함께 사용하는 사용자를 위한 기본 슬롯 정책:
 

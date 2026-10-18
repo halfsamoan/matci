@@ -11,6 +11,7 @@ gschemas.compiled
 .playwright-mcp/
 node_modules/
 dist/
+.dev/
 output/
 .playwright/
 .playwright-cli/

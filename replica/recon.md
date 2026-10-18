@@ -1,5 +1,7 @@
 # 원본 분석 — Mint → matci
 
+> 과거 역설계 기록. 현재 제품 결정에서는 matci가 대기 중 패널 표시만 제공하고, 상세 overlay는 사용자가 연다. Archsport는 경기 상태에서만 노치가 표시된다.
+
 ## 정체 판정
 
 **대상은 DZG Studio LLC의 Mint for Mac이며, 첨부 자료는 Memory 기능 시연이다. 신뢰도 높음.** E03의 `Free up memory`, `Auto Care`, Home/Disk/Organize/Memory/Uninstall/Log 메뉴와 E02/E05/E06의 Idle/In use/System & protected/Freed 분류가 S01/S02에 대응한다. 계정 `dzg_studio`도 S11의 게시자와 일치한다. 정확한 시연 버전·에디션과 Instagram 게시물 URL은 확인하지 못했다.

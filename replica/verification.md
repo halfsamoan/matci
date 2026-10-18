@@ -61,3 +61,13 @@ Linux 기술 조사와 아키텍처의 독립 검토에서 지표별 freshness, 
 - Archsport와 공유 배치에서 작업영역 예약 actor를 제거했다. 노치는 기존 앱 창을 밀지 않는 chrome 오버레이이며 빈 배경은 click-through다. 앱 목록 길이와 경기 데이터에 따라 높이를 측정하고 아이콘·짧은 상태 표시를 사용한다.
 - 버전 6 파일을 사용자 확장 경로에 설치했다. GNOME 50.1은 프로세스 안에서 이전 버전 5를 유지했고 D-Bus `ReloadExtension`은 `UnknownMethod: not implemented`였다. 재활성화 시 이전 status-area role 충돌로 현재 `matci@local`이 `ERROR`가 됐다. 소스에는 status-area 항목 정리 방어 코드를 추가했지만, 현재 Shell 캐시 때문에 아직 실행되지 않았다.
 - matci Python 42/42, Node test 15/15, JS syntax, strict schema dry-run 통과. GNOME 50.1의 새 코드 렌더링·click-through·창 좌표 검수는 다음 세션에서 남아 있다. 현재 세션을 로그아웃하거나 Shell 재시작하지 않았다.
+
+## 2026-10-18 제품 v1 적용 및 독립 검토
+
+- matci는 대기 중 패널 RAM 표시만 남기고, 패널 활성화·접기·Escape로 상세 overlay를 여닫도록 변경했다. overlay가 닫힌 동안 actor는 숨기며 작업공간을 예약하지 않는다. 웹 프리뷰도 같은 수동 열기 정책을 따른다.
+- Archsport·matci 두 저장소에 대해 독립 에이전트가 문서·코드·검수 상태를 읽기 전용으로 확인했다. Archsport의 기존 25/27 실패는 오래된 테스트 기대였고 27/27로 수정했다. matci의 idle panel-only 렌더 조건은 기존 코드에 있었지만 패널 입력과 문서가 일치하지 않아 이번 변경에서 연결했다. 실기기·실시간 API 확인은 별도다.
+- 쌍 저장소 게이트: Archsport Python 27/27, Node 2/2, strict schema 통과; matci Python 42/42, Node 15/15, strict schema 통과. 격리 staging은 `.dev/` 안에서 완료됐다.
+- 현재 사용자 Shell은 Archsport v6 `ACTIVE`, matci v5 `ERROR`를 메모리에 유지한다. 두 소스의 버전은 v7이다. 재로그인·실제 사용자 확장 경로 교체·Shell 재시작은 하지 않았다.
+- GNOME 50의 중첩 실행은 Mutter Devkit을 필요로 한다. 현재 시스템에 `/usr/libexec/mutter-devkit`가 없다. Ubuntu `mutter-dev-bin`은 설치 시 Mutter 50.1 패키지 4개 업그레이드도 요구해 시스템 패키지는 변경하지 않았다. 그러므로 두 앱의 중첩 GNOME 화면·실제 hover/click·배율 검수는 미실행이다.
+- 격리된 headless GNOME 50.1에서 두 v7 확장을 로드해 `ACTIVE`를 확인했다. 첫 실행에서 Archsport `_render()`의 범위 밖 `toggle` 참조가 `ERROR`를 냈고, 토글을 인스턴스 메서드로 옮겨 해결했다. 재실행 시 Archsport·matci 모두 `ACTIVE`, 두 확장 관련 startup error 없음. 이 확인은 overlay 렌더링·입력·배치 검수가 아니다.
+- Chromium 웹 프리뷰에서 matci 패널 항목을 눌렀을 때 overlay가 열리고, 다시 눌렀을 때 숨겨지는 상태를 확인했다. 합성 프리뷰 수치이며 GNOME 실측과 별개다.

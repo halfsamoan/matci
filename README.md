@@ -1,8 +1,8 @@
 # matci — 포트폴리오 02
 
-Ubuntu GNOME의 메모리 관측·수동 정리 도우미. Archsport와 함께 패널 아래 **두 개의 노치가 하나의 중앙 그룹으로 공존**한다.
+Ubuntu GNOME의 메모리 관측·수동 정리 도우미. matci는 평소 패널에 RAM 사용률만 표시하고, 눌렀을 때 상세 오버레이를 연다.
 
-matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저장소다. 각각 설치·실행·제거하며, 두 노치를 함께 사용할 때 배치와 펼침 우선순위만 조율한다.
+matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저장소다. matci는 사용자가 열 때만 표면을 표시하고 Archsport는 경기 관련 상태가 있을 때만 노치를 표시한다. 겹침 방지 배치만 공유한다.
 
 전체 RAM과 앱 점유를 구별해 보고, 보호 이유를 확인한 뒤 직접 선택한 앱의 창에 정상 닫기를 요청한다. 자동 종료·강제 종료·캐시 강제 비우기는 하지 않는다. Python core는 표준 라이브러리만 사용한다.
 
@@ -14,7 +14,20 @@ matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저
 python -m http.server 4180 --bind 127.0.0.1 --directory web
 ```
 
-[시연 화면](http://127.0.0.1:4180)에서 두 노치·메모리 선택·검토·기록·설정을 확인한다. 합성 데이터이며 Windows 앱이나 실제 메모리는 변경하지 않는다.
+[시연 화면](http://127.0.0.1:4180)에서 패널 RAM 항목, 상세 오버레이, 메모리 선택·검토·기록·설정을 확인한다. 합성 데이터이며 Windows 앱이나 실제 메모리는 변경하지 않는다.
+
+## Ubuntu에서 로그아웃 없이 개발
+
+```bash
+python3 tools/dev.py --check-only
+python3 tools/dev.py
+```
+
+두 확장을 `.dev/`의 분리된 XDG 데이터·설정·상태 경로에 설치하고 중첩 GNOME Shell에서 함께 실행한다. 파일 변경 때 테스트와 schema 검사를 통과한 경우에만 중첩 Shell을 다시 띄운다. 메인 데스크톱 세션과 사용자 확장 설치는 건드리지 않는다. Archsport 저장소에서 시작하려면 `python3 tools/dev.py`를 실행하면 matci 개발 루프로 연결된다.
+
+Mutter Devkit이 아직 없으면 `python3 tools/dev.py --headless`로 두 확장의 GNOME 시작 상태를 검사할 수 있다. 이 모드는 화면·입력·배치 검수를 대신하지 않는다.
+
+GNOME 49+에서 화면을 띄우려면 Mutter Devkit이 필요하다. Ubuntu 패키지는 `mutter-dev-bin`이다. 이 패키지가 없으면 검사와 격리 staging은 끝내고 화면 실행 단계에서 중단한다.
 
 ## Ubuntu 설치
 
@@ -27,9 +40,9 @@ gnome-extensions enable matci@local
 gnome-extensions prefs matci@local
 ```
 
-업데이트는 `python3 tools/install_extension.py --upgrade`, 직전 버전 복구는 `--rollback`. 사용자 설정·DB는 확장 설치와 별도다. Archsport도 공존 버전으로 업데이트해야 공유 배치가 적용된다. 업데이트 뒤 `gnome-extensions enable matci@local`로 켠다. 이미 Shell에 불러온 확장은 다른 버전 코드를 현재 세션에서 다시 읽지 않을 수 있으니 `gnome-extensions info matci@local`의 버전이 바뀌지 않으면 다음 사용자 세션 진입 뒤 새 코드가 적용된다.
+사용자 세션 설치는 `python3 tools/install_extension.py`, 업데이트는 `--upgrade`, 직전 버전 복구는 `--rollback`이다. 이 설치기는 기존 matci 확장을 비활성화하고 교체하므로 반복 개발에는 사용하지 않는다. 로그아웃 없이 반복 검수하려면 위의 `tools/dev.py` 중첩 세션을 쓴다.
 
-matci는 평소 상단 패널의 RAM 항목만 보인다. 상세 메모리 창은 패널 항목을 눌러 열고 닫는다. 상세 창을 열면 GNOME 작업 공간이 노치 높이만큼 줄어 앱 창이 가려지지 않게 한다.
+matci는 평소 상단 패널의 RAM 아이콘과 사용률만 보인다. 패널 항목을 누르면 상세 오버레이가 열리고, 다시 누르거나 접기 버튼을 누르면 닫힌다. 오버레이는 작업 공간을 예약하지 않아 기존 창 위치를 바꾸지 않는다.
 
 ```bash
 # 확장을 끈 상태에서 CLI를 분리 검사한다(기본 state에는 worker 1개만 허용).
@@ -43,7 +56,7 @@ gnome-extensions enable matci@local
 ## 구조와 검수
 
 - GNOME Extension → Python subprocess, versioned JSON Lines. 별도 서비스·계정·네트워크 불필요.
-- 수동 화면100 → 경기 알림80 → 메모리 제안30. 좁은 모니터는 패널 버튼으로 전환한다.
+- matci overlay는 사용자 패널 입력으로만 열린다. Archsport 경기 표면과 겹치면 수동 화면을 우선한다.
 - [Linux 인수인계와 실기 절차](docs/LINUX_HANDOFF.md)
 - [노치 공존 규칙](docs/DUAL_NOTCH.md)
 - [검증 기록과 한계](replica/verification.md)

@@ -66,15 +66,6 @@
 .matci-button:insensitive, .matci-icon-button:insensitive { color: #838b97; }
 .matci-primary-button { color: #16120c; background-color: #e7b86d; font-weight: 700; }
 .matci-primary-button:hover { color: #16120c; background-color: #f0c57a; }
-.matci-compact {
-    min-width: 122px;
-    height: 32px;
-    padding: 0 17px;
-    border-radius: 18px;
-    background-color: #20242b;
-}
-.matci-compact-content { spacing: 8px; }
-.matci-compact StIcon { color: #e7b86d; }
-.matci-compact-value { color: #f5f7fa; font-size: 12px; font-weight: 700; }
 .matci-panel-status { spacing: 4px; }
-.matci-panel-status StIcon { color: #e7b86d; }
+.matci-panel-status StIcon { color: #8d96a4; }
+.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #8de3c0; border-radius: 8px; }

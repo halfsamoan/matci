@@ -42,7 +42,10 @@ function collapse(returnFocus = true) {
   state.owner = null;
   state.goal = false;
   renderDock();
-  if (returnFocus && previous) document.querySelector(`#${previous}-island .island-header`)?.focus({preventScroll:true});
+  if (returnFocus && previous) {
+    const target = previous === 'memory' ? $('#memory-panel-button') : document.querySelector(`#${previous}-island .island-header`);
+    target?.focus({preventScroll:true});
+  }
 }
 
 function openManual(id) {
@@ -61,15 +64,21 @@ function renderDock() {
   sport.classList.toggle('expanded', sportExpanded);
   const offline = state.scenario === 'offline';
   const label = state.busy ? '닫기 요청 관측 중' : state.review ? '선택 검토 중' : `RAM ${metricPercent()}%`;
+  const panelValue = `${metricPercent()}${offline ? '' : '%'}`;
+  const panelButton = $('#memory-panel-button');
+  $('#memory-panel-value').textContent = panelValue;
+  panelButton.setAttribute('aria-expanded', String(memoryExpanded));
+  panelButton.setAttribute('aria-label', `matci RAM ${panelValue}, ${memoryExpanded ? '상세 접기' : '상세 보기'}`);
   memory.innerHTML = `<button type="button" id="memory-trigger" class="island-header" data-action="toggle-memory" aria-expanded="${memoryExpanded}" aria-controls="memory-body" aria-label="matci 메모리 ${metricPercent()}퍼센트, ${memoryExpanded?'접기':'펼치기'}">${memIcon}<span class="notch-title">${label}</span><span class="notch-sub">${offline?'관측 중단':state.scenario==='partial'?'일부 관측':state.review?'직접 확인':state.pendingGoal?'골 대기 중':'matci'}</span></button>
   <div class="island-body" id="memory-body" ${memoryExpanded?'':'inert'}><p class="island-description">${state.review?'검토하는 동안 다른 알림은 기다립니다.':offline?'마지막 값을 실제 상태로 표시하지 않습니다.':'필요한 작업은 보호하고, 후보는 직접 선택하세요.'}</p><div class="mini-metric"><strong>${metricPercent()}<span>%</span></strong><span>${offline?'현재 수치 없음':`${state.receipt?.delta>0?'10.65':'11.25'} / 15.00 GiB · 합성 RAM`}</span></div><div class="memory-bar"><span class="used" style="width:${offline?0:metricPercent()}%"></span></div><div class="mini-footer"><p>${state.review?'검토 우선순위 100':state.selected.size?`${state.selected.size}개 앱 선택됨`:`${available().length}개 후보 · 자동 종료 안 함`}</p><button type="button" data-action="open-memory" ${state.review?'disabled':''}>메모리 보기 ↗</button></div></div>`;
   const score = `${state.homeScore} : 1`;
   sport.innerHTML = `<button type="button" id="sport-trigger" class="island-header" data-action="toggle-sport-island" aria-expanded="${sportExpanded}" aria-controls="sport-body" aria-label="Archsport Barcelona ${score}, ${sportExpanded?'접기':'펼치기'}"><span class="sport-score"><img src="./assets/logos/529.png" alt="FC Barcelona"><b>${score}</b><img src="./assets/logos/505.png" alt="Inter"></span><span class="notch-sub">${state.goal?'골 · 시연':'67′ · 시연'}</span></button><div class="island-body" id="sport-body" ${sportExpanded?'':'inert'}><p class="island-description">Archsport · 합성 경기, 실제 중계 아님</p><div class="match-detail"><span class="match-team"><img src="./assets/logos/529.png" alt="">Barcelona</span><strong>${score}</strong><span class="match-team"><img src="./assets/logos/505.png" alt="">Inter</span></div><div class="mini-footer"><p class="${state.goal?'event-text':''}">${state.goal?'골! · 시연 선수 · 68′':'후반 67′ · 가상 경기'}</p><button type="button" data-action="collapse">접기</button></div></div>`;
   const width = window.innerWidth;
-  const entries = [{id:'memory',width:memoryExpanded?460:336,height:memoryExpanded?224:46,order:1,active:memoryExpanded}];
+  const entries = [];
+  if (memoryExpanded) entries.push({id:'memory',width:460,height:224,order:1,active:true});
   if (state.sportEnabled) entries.push({id:'sport',width:sportExpanded?460:336,height:sportExpanded?224:46,order:0,active:sportExpanded});
-  const positions = layoutNotches(entries,{x:0,y:0,width,panelHeight:32},12,12);
-  memory.hidden = false;
+  const positions = entries.length ? layoutNotches(entries,{x:0,y:0,width,panelHeight:32},12,12) : [];
+  memory.hidden = !memoryExpanded;
   sport.hidden = !state.sportEnabled;
   let fallbackId = null;
   for (const item of positions) {
@@ -78,7 +87,7 @@ function renderDock() {
     node.style.left = `${item.x}px`;
     node.style.width = `${item.width}px`;
     node.style.height = `${item.height}px`;
-    if (item.fallback) fallbackId = item.id;
+    if (item.fallback && item.id === 'sport') fallbackId = item.id;
   }
   const companion = $('#companion');
   companion.hidden = !fallbackId;
@@ -240,6 +249,7 @@ document.addEventListener('click',event=> {
   if(button.dataset.page){state.page=button.dataset.page;renderPage(true);return;}
   switch(button.dataset.action){
     case 'toggle-memory': state.owner?.id==='memory'?collapse():openManual('memory');break;
+    case 'toggle-panel-memory': state.owner?.id==='memory'?collapse():openManual('memory');break;
     case 'toggle-sport-island': state.owner?.id==='sport'?collapse():openManual('sport');break;
     case 'open-memory': state.page='memory';renderPage(true);openManual('memory');break;
     case 'collapse': collapse();break;

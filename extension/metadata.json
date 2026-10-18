@@ -1,8 +1,8 @@
 {
   "uuid": "matci@local",
   "name": "matci",
-  "description": "Local memory observations and explicit normal window-close requests in a shared Archsport notch dock. Ubuntu runtime validation required.",
+  "description": "Panel-first system memory overview and explicit normal window-close requests. Ubuntu runtime validation required.",
   "shell-version": ["46", "50"],
   "settings-schema": "org.gnome.shell.extensions.matci",
-  "version": 6
+  "version": 7
 }
