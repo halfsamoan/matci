@@ -6,7 +6,7 @@
 - matci 변경: 재렌더 후 앱 목록 스크롤과 포커스를 복원하고, 패널 입력은 빈 popup을 만들지 않고 클릭/터치/Enter/Space로 토글한다. Archsport가 우선순위로 matci 노치를 잠시 양보해도 review와 선택은 유지한다. 60초 초과 review는 정상 닫기 전에 만료 안내와 함께 거부한다. 관련 Node 회귀 테스트 통과.
 - Worker lifecycle은 단일 worker lock 및 중복 실행 오류를 구분하고, worker 시작 시 GJS UI 버전과 Python package 버전을 비교한다. 설치기 v8은 `extension-updates/`에 staging하고 doctor가 적용 대기·실행 버전·worker 수를 기록한다.
 - 최종 audit 보강: 확장 `enable()`은 `pending-relogin.json`의 설치 버전이 로드된 metadata 버전과 같을 때만 표식을 지우며, doctor는 해당 파일을 변경하지 않는다. doctor의 `locked` 필드는 기존 `worker.lock`의 장치·inode를 `/proc/locks`에서 읽어 확인하며 worker 잠금을 획득하지 않는다. UI/Python 버전 불일치는 worker와 요청을 중단하고 노치에 경고를 표시한다. 직접 교체/rollback 경로는 기존에 활성화된 확장을 다시 켠다. 테스트는 잠금 파일이 없을 때 만들지 않는 경우, 실제 잠금 보유, 설치된 extension 디렉터리의 exact UI version을 각각 확인한다.
-- 사용자 경로에 v8을 staging했다. 설치 경로는 v7이고 doctor는 `pending_relogin=true`를 보고한다. 2026-10-19 최종 확인에서 Extension Manager는 matci와 Archsport를 캐시 GJS v7·`Enabled: Yes`·`INACTIVE`, worker는 0개로 보고했다. cornro, focus-monitor, Ubuntu Dock도 같은 상태였으며 원인은 미확정이다. 현재 데스크톱 세션을 종료하거나 다시 로그인하지 않았다. 따라서 새 패널 입력, 포커스·스크롤 및 노치 공존은 실제 GNOME 화면에서 아직 확인되지 않았다.
+- 사용자가 재로그인한 뒤 확인: 설치/GJS 실행 버전 v8, `ACTIVE`, worker 1개, worker lock 보유, doctor의 `pending_relogin=false`. Archsport도 v11 `ACTIVE`, worker 1개다. 이전 Shell 종료 로그에 matci v7 UI actor dispose 이후 callback 접근 경고가 있었으나 새 Shell 시작 후에는 두 확장의 추가 오류를 관찰하지 못했다. 새 패널 입력, 포커스·스크롤 및 노치 공존의 화면 검수는 아직 하지 않았다.
 - 최종 제품 명세의 시스템 전체 CPU, swap, GPU 사용률, GPU 온도는 snapshot/provider/UI에 없다. process별 CPU fraction, RAM, PSI, 앱 메모리는 존재한다. 이 4개는 후속 P1이며 v1 완료로 표시하지 않는다.
 
 ## 2026-10-18 Ubuntu 26.04.1 사용자 세션 적용
