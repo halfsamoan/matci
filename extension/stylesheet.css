@@ -7,6 +7,7 @@
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
 }
 .matci-header, .matci-controls, .matci-app-row { spacing: 8px; }
+.matci-content { spacing: 5px; }
 .matci-title { font-weight: bold; font-size: 12px; }
 .matci-metric { font-size: 15px; font-weight: bold; color: #4a8dff; }
 .matci-caption { font-size: 10px; color: #c6cbd4; }

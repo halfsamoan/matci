@@ -1,5 +1,11 @@
 # 검증 기록
 
+## 콘텐츠 fade·이동 — 2026-10-18
+
+Matci native/web 노치에 의미 있는 상태 전환만 교차 fade·작은 수직 이동을 적용했다. 컨테이너320/420ms와 두 앱의 공유 배치 계약은 유지한다. Apple 타이밍을 실측한 결과가 아닌 새 구현이다. 실제 Archsport 앱 소스는 이번에 수정하지 않았다.
+
+Node24/24: 기존22개 + outgoing 비활성·연타 시 해제·현재 표시값 연속성·모션 감소·동일 상태 갱신2개. Chromium1440px에서 실제 콘텐츠 WAAPI와 outgoing inert/aria-hidden, 중복ID 없음, 전환 종료 시 ghost 제거, resize 시 동일 DOM 유지, 연타, 검토 중 골 알림의 focus 보호, 앱/OS 모션 감소를 확인했다. pageerror0. 390px에서도 패널 fallback을 통해 다시 열기와 scrollWidth390/viewport390을 확인했다. ZIP26개 runtime에 새 모듈이 포함된다. GNOME46 BinLayout 헤더/구현의 가상 메서드 계약을 참고했지만 **새 St/Clutter 호스트와 fade의 실제 GNOME46/50 실행은 미검증**이다. Python core·정상 닫기 정책은 변경하지 않았다.
+
 ## PR #1 polish — 2026-10-18
 
 기능 추가 없이 GTK responsive/행 상태, 단방향 scatter+fade, MiB/GiB adaptive formatting을 수정했다. JS22/22(기존20+단위 경계·단방향 이동/opacity 회귀2개) 통과. Python core/창 닫기 정책은 변경하지 않았다.

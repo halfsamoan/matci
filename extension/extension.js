@@ -1,6 +1,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -12,10 +13,29 @@ import {CloseController} from './actions.js';
 import {protection, appView, keyOf, interactionAge} from './policy.js';
 import {AppBridge, publicApps} from './appBridge.js';
 import {DesktopService} from './desktopService.js';
+import {ContentMotion} from './contentMotion.js';
 
 const MAX_LINE = 262144;
 const bytes = n => n === null || n === undefined ? '확인 불가' : `${(n / 1073741824).toFixed(2)} GiB`;
 const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
+
+// Only the incoming scene participates in sizing. Outgoing content keeps its
+// last allocation during the fade, including when the notch starts shrinking.
+const ContentLayout = GObject.registerClass(class MatciContentLayout extends Clutter.BinLayout {
+    vfunc_get_preferred_width(container, forHeight) {
+        return container.get_last_child()?.get_preferred_width(forHeight) ?? [0, 0];
+    }
+    vfunc_get_preferred_height(container, forWidth) {
+        return container.get_last_child()?.get_preferred_height(forWidth) ?? [0, 0];
+    }
+    vfunc_allocate(container, box) {
+        const current = container.get_last_child();
+        for (const child of container.get_children()) {
+            child.allocate(child === current ? new Clutter.ActorBox({x1: 0, y1: 0,
+                x2: box.get_width(), y2: box.get_height()}) : child.get_allocation_box());
+        }
+    }
+});
 
 export default class Matci extends Extension {
     enable() {
@@ -42,6 +62,18 @@ export default class Matci extends Extension {
         this._root = new St.BoxLayout({vertical: true, reactive: true, can_focus: true,
             style_class: 'matci-notch', width: 220, height: 46, clip_to_allocation: true,
             accessible_name: 'matci 메모리 노치'});
+        const host=new St.Widget({layout_manager:new ContentLayout(),x_expand:true,y_expand:true});
+        this._root.add_child(host);
+        this._contentMotion=new ContentMotion(host, actor=>{
+            const focus=global.stage.get_key_focus();
+            if (focus && actor.contains(focus)) this._root.grab_key_focus();
+            const disable=node=>{
+                node.reactive=false;
+                if (node instanceof St.Widget) node.can_focus=false;
+                for (const child of node.get_children()) disable(child);
+            };
+            disable(actor);
+        },()=>this._interface.get_boolean('enable-animations'),Clutter.AnimationMode.EASE_OUT_CUBIC);
         this._root.connect('key-press-event', (_actor, event) => {
             if (event.get_key_symbol() === Clutter.KEY_Escape) {
                 this._collapse(); this._indicator.grab_key_focus(); return Clutter.EVENT_STOP;
@@ -80,6 +112,9 @@ export default class Matci extends Extension {
             apps: publicApps(this._groups(this._snapshot), group => this._protection(group, this._snapshot)),
             busy: this._actions.busy, message: this._message, receipt: this._lastReceipt ?? null}));
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
+        this._connect(this._interface, 'changed::enable-animations',()=>{
+            if (!this._interface.get_boolean('enable-animations')) this._contentMotion.finish();
+        });
         this._connect(Main.panel, 'notify::height', () => this._visibility());
         this._connect(Main.overview, 'showing', () => this._visibility());
         this._connect(Main.overview, 'hidden', () => this._visibility());
@@ -198,7 +233,7 @@ export default class Matci extends Extension {
     }
     _render() {
         if (!this._enabled) return;
-        for (const child of this._root.get_children()) child.destroy();
+        const content=new St.BoxLayout({vertical:true,x_expand:true,y_expand:true,style_class:'matci-content'});
         const snapshot = this._snapshot;
         const memory = snapshot?.memory;
         const demo = snapshot?.mode === 'demo';
@@ -212,16 +247,16 @@ export default class Matci extends Extension {
             compact.add_child(bars);
             compact.add_child(this._label(`RAM ${percent(memory?.used_ratio)}`, 'matci-title'));
             compact.add_child(this._label(demo ? '시연' : 'matci', 'matci-caption'));
-            button.set_child(compact); button.connect('clicked', () => this._expand(true)); this._root.add_child(button);
+            button.set_child(compact); button.connect('clicked', () => this._expand(true)); content.add_child(button);
         } else {
             const header = new St.BoxLayout({style_class: 'matci-header'});
             header.add_child(this._label(`matci · ${demo ? '합성 시연 · 실제 제어 없음' : '전체 RAM 관측'}`, 'matci-title'));
             header.add_child(this._button('설정', () => this.openPreferences()));
             header.add_child(this._button('앱 열기 ↗', () => this._openApp()));
             header.add_child(this._button('접기', () => this._collapse()));
-            this._root.add_child(header);
-            this._root.add_child(this._label(`${percent(memory?.used_ratio)} 사용 · 가용 ${bytes(memory?.available_bytes)} / 전체 ${bytes(memory?.total_bytes)}`, 'matci-metric'));
-            this._root.add_child(this._label('전체: MemTotal − MemAvailable · 앱 점유는 확보 보장량이 아닙니다.'));
+            content.add_child(header);
+            content.add_child(this._label(`${percent(memory?.used_ratio)} 사용 · 가용 ${bytes(memory?.available_bytes)} / 전체 ${bytes(memory?.total_bytes)}`, 'matci-metric'));
+            content.add_child(this._label('전체: MemTotal − MemAvailable · 앱 점유는 확보 보장량이 아닙니다.'));
             const scroll = new St.ScrollView({style_class: 'matci-scroll', x_expand: true, y_expand: true,
                 hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC});
             const list = new St.BoxLayout({vertical: true, style_class: 'matci-list'});
@@ -269,7 +304,7 @@ export default class Matci extends Extension {
                 if (!groups.length) list.add_child(this._label('현재 매핑 가능한 창이 없습니다. 다음 관측을 기다리세요.'));
             }
             list.add_child(this._label(this._message, 'matci-status'));
-            this._root.add_child(scroll);
+            content.add_child(scroll);
             const controls = new St.BoxLayout({style_class: 'matci-controls'});
             if (review) {
                 controls.add_child(this._button('취소', () => { this._actions.cancel(); this._render(); }));
@@ -278,9 +313,11 @@ export default class Matci extends Extension {
                 controls.add_child(this._button('새로고침', () => this._refresh(), Boolean(snapshot) && !this._actions.busy));
                 controls.add_child(this._button(`선택 ${this._selected.size}개 검토`, () => this._review(), !demo && this._selected.size > 0 && !this._actions.busy));
             }
-            this._root.add_child(controls);
+            content.add_child(controls);
         }
         this._root.accessible_name = `matci ${demo ? '합성 시연' : '메모리'}. ${percent(memory?.used_ratio)} 사용. ${this._message}`;
+        const scene=!this._expanded?'compact':this._actions?.review?'review':this._actions?.busy?'observing':this._actionStatus??'overview';
+        this._contentMotion.show(content,`${scene}:${snapshot?.mode??'offline'}`);
         this._visibility();
     }
     _review() {
@@ -464,6 +501,7 @@ export default class Matci extends Extension {
         for (const [object, id] of this._signals) object.disconnect(id);
         this._signals = [];
         this._dock?.destroy(); this._dock = null;
+        this._contentMotion?.destroy(); this._contentMotion=null;
         this._root?.destroy(); this._root = null;
         this._indicator?.destroy(); this._indicator = null;
         this._settings = this._interface = this._actions = null;
