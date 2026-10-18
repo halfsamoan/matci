@@ -1,4 +1,6 @@
 // Pure geometry shared by the native dock, web preview, and Node checks.
+export const DOCK_PROTOCOL = 2;
+
 export function canClaim(active, id, priority) {
     return !active || active.id === id || priority >= active.priority;
 }

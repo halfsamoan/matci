@@ -4,7 +4,9 @@ Ubuntu GNOME의 메모리 관측·수동 정리 도우미. matci는 평소 패�
 
 matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저장소다. matci는 사용자가 열 때만 표면을 표시하고 Archsport는 경기 관련 상태가 있을 때만 노치를 표시한다. 겹침 방지 배치만 공유한다.
 
-전체 RAM과 앱 점유를 구별해 보고, 보호 이유를 확인한 뒤 직접 선택한 앱의 창에 정상 닫기를 요청한다. 자동 종료·강제 종료·캐시 강제 비우기는 하지 않는다. Python core는 표준 라이브러리만 사용한다.
+전체 RAM 사용률(MemTotal−MemAvailable), PSI, 프로세스별 PSS/RSS, 관측 가능한 프로세스 CPU 비율을 구별해 보여준다. 보호 이유를 확인한 뒤 직접 선택한 앱의 현재 창에 정상 닫기를 요청한다. 자동 종료·강제 종료·캐시 강제 비우기는 하지 않는다. Python core는 표준 라이브러리만 사용한다.
+
+**현재 수집하지 않는 항목:** 시스템 전체 CPU 사용률, swap 사용량, GPU 사용률, GPU 온도는 snapshot/provider에 아직 없다. 최종 제품 명세에 포함된 후속 P1 작업이며 현재 구현 완료로 간주하지 않는다.
 
 **현재: MVP 소스와 Windows 시연 구현. WSL의 실제 `/proc` 수집 및 자동 검사는 통과했으나, ASUS 노트북의 Ubuntu GNOME 실행·절전·배율·실제 창 닫기는 아직 미검증이다.** GNOME46/50은 선언한 검수 대상이지 확인된 호환성 목록이 아니다.
 
@@ -40,7 +42,7 @@ gnome-extensions enable matci@local
 gnome-extensions prefs matci@local
 ```
 
-사용자 세션 설치는 `python3 tools/install_extension.py`, 업데이트는 `--upgrade`, 직전 버전 복구는 `--rollback`이다. 이 설치기는 기존 matci 확장을 비활성화하고 교체하므로 반복 개발에는 사용하지 않는다. 로그아웃 없이 반복 검수하려면 위의 `tools/dev.py` 중첩 세션을 쓴다.
+사용자 세션 설치는 `python3 tools/install_extension.py`, 업데이트는 `--upgrade`, 직전 버전 복구는 `--rollback`이다. 업데이트 가능한 GNOME 환경에서는 새 버전을 staging하고 실제 Shell 실행 버전과 worker 수를 doctor에 표시한다. 새 UI의 GNOME 적용 여부는 설치 버전과 실행 버전이 일치하는지 확인한다. 로그아웃 없이 반복 검수하려면 위의 `tools/dev.py` 중첩 세션을 쓴다.
 
 matci는 평소 상단 패널의 RAM 아이콘과 사용률만 보인다. 패널 항목을 누르면 상세 오버레이가 열리고, 다시 누르거나 접기 버튼을 누르면 닫힌다. 오버레이는 작업 공간을 예약하지 않아 기존 창 위치를 바꾸지 않는다.
 

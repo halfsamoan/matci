@@ -19,6 +19,10 @@ Apple Shortcuts 통합,integration,could,yes,skip,대상 Linux 플랫폼 범위 
 Archsport 노치 모션 재사용,notch,must,no,partial,A01; GNOME320ms와 web420ms 별도; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 Archsport 동시 노치 충돌 대응,notch,must,no,partial,보조 슬롯과 패널 아이콘 fallback; M2 실기 검수; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 PSI와 메트릭 종류 표시,memory,must,no,partial,L01 L02; unavailable은 null; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
+시스템 전체 CPU 사용률,memory,must,no,no,사용자 최종 제품 명세; snapshot/provider 미구현; 후속 P1
+swap 사용량,memory,must,no,no,사용자 최종 제품 명세; /proc/meminfo 수집과 UI 표시 미구현; 후속 P1
+GPU 사용률,memory,must,no,no,사용자 최종 제품 명세; 하드웨어 provider 미구현; 후속 P1
+GPU 온도,memory,must,no,no,사용자 최종 제품 명세; 하드웨어 provider 미구현; 후속 P1
 절전 복귀와 worker 단일 수명,lifecycle,must,no,partial,실기에서 검증; M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 키보드와 모션 감소,accessibility,must,no,partial,원본 미관측 상태를 matci 요구사항으로 추가; M1-M2; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증
 자동 관리 제안 모드,automation,should,no,partial,기본 꺼짐; 자동 종료 없음; M3; 소스/합성 검증 및 WSL 수집 구현; 실제 GNOME P0 미검증

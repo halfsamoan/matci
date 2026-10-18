@@ -1,5 +1,14 @@
 # 검증 기록
 
+## 2026-10-19 안정화 배치
+
+- 통합 `python3 tools/dev.py --check-only`: Archsport Python 61/61·Node 5/5, matci Python 47/47·Node 22/22, 공용 dock byte 동일, 두 strict schema dry-run 통과, 두 ESLint 실행 모두 오류 0. 남은 ESLint 경고는 사용하지 않는 catch 변수 등이다.
+- matci 변경: 재렌더 후 앱 목록 스크롤과 포커스를 복원하고, 패널 입력은 빈 popup을 만들지 않고 클릭/터치/Enter/Space로 토글한다. Archsport가 우선순위로 matci 노치를 잠시 양보해도 review와 선택은 유지한다. 60초 초과 review는 정상 닫기 전에 만료 안내와 함께 거부한다. 관련 Node 회귀 테스트 통과.
+- Worker lifecycle은 단일 worker lock 및 중복 실행 오류를 구분하고, worker 시작 시 GJS UI 버전과 Python package 버전을 비교한다. 설치기 v8은 `extension-updates/`에 staging하고 doctor가 적용 대기·실행 버전·worker 수를 기록한다.
+- 최종 audit 보강: 확장 `enable()`은 `pending-relogin.json`의 설치 버전이 로드된 metadata 버전과 같을 때만 표식을 지우며, doctor는 해당 파일을 변경하지 않는다. doctor의 `locked` 필드는 기존 `worker.lock`의 장치·inode를 `/proc/locks`에서 읽어 확인하며 worker 잠금을 획득하지 않는다. UI/Python 버전 불일치는 worker와 요청을 중단하고 노치에 경고를 표시한다. 직접 교체/rollback 경로는 기존에 활성화된 확장을 다시 켠다. 테스트는 잠금 파일이 없을 때 만들지 않는 경우, 실제 잠금 보유, 설치된 extension 디렉터리의 exact UI version을 각각 확인한다.
+- 사용자 경로에 v8을 staging했다. 현재 설치 경로/Shell은 v7 `ACTIVE`, worker 1개, doctor의 `pending_relogin=true`. 현재 데스크톱 세션을 종료하거나 다시 로그인하지 않았다. 따라서 새 패널 입력, 포커스·스크롤 및 노치 공존은 실제 GNOME 화면에서 아직 확인되지 않았다.
+- 최종 제품 명세의 시스템 전체 CPU, swap, GPU 사용률, GPU 온도는 snapshot/provider/UI에 없다. process별 CPU fraction, RAM, PSI, 앱 메모리는 존재한다. 이 4개는 후속 P1이며 v1 완료로 표시하지 않는다.
+
 ## 2026-10-18 Ubuntu 26.04.1 사용자 세션 적용
 
 - ASUS Vivobook M6500QC, GNOME Shell 50.1, Wayland, eDP-1 논리 1728×972를 확인했다.

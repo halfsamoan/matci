@@ -10,7 +10,7 @@ import unittest
 
 from matci.demo import DemoCollector, load_replay
 from matci.model import MAX_LINE_BYTES, new_id, utc_now
-from matci.store import Store, current_uid
+from matci.store import Store, WorkerLocked, current_uid
 from matci.worker import Worker, decode_line, ProtocolError
 
 
@@ -200,7 +200,7 @@ class WorkerContractTests(unittest.TestCase):
         self.assertEqual(self.send(message)['type'], 'error')
 
     def test_single_worker_lock(self):
-        with self.assertRaises(OSError):
+        with self.assertRaises(WorkerLocked):
             Store(self.store.directory)
 
     def test_foreign_owner_database_and_future_schema_refused(self):

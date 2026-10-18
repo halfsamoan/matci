@@ -8,15 +8,29 @@ import sqlite3
 import sys
 import threading
 import time
+from pathlib import Path
 
 from .demo import DemoCollector
 from .model import MAX_LINE_BYTES
-from .store import Store, current_uid
+from .store import Store, WorkerLocked, current_uid
 from .worker import Worker
 
 
 def emit(message):
     print(json.dumps(message, ensure_ascii=True, allow_nan=False, separators=(',', ':')), flush=True)
+
+
+def extension_version():
+    package_root = Path(__file__).resolve().parents[1]
+    candidates = (package_root / 'metadata.json', package_root / 'extension' / 'metadata.json')
+    for path in candidates:
+        try:
+            value = json.loads(path.read_text(encoding='utf-8')).get('version')
+            if isinstance(value, int) and value > 0:
+                return value
+        except (OSError, ValueError, TypeError):
+            continue
+    return None
 
 
 def read_commands(stream, messages):
@@ -43,6 +57,7 @@ def main(argv=None):
     parser.add_argument('--mode', choices=('live', 'demo'), default='live')
     parser.add_argument('--interval', type=float, default=5.0)
     parser.add_argument('--state-dir')
+    parser.add_argument('--ui-version', type=int)
     parser.add_argument('--replay', help='explicit synthetic JSON replay; always demo mode')
     args = parser.parse_args(argv)
     if not math.isfinite(args.interval) or not 1 <= args.interval <= 3600:
@@ -60,7 +75,11 @@ def main(argv=None):
             from .procfs import ProcCollector
             collector = ProcCollector(uid=uid)
         store = Store(args.state_dir, uid)
+        package_version = extension_version()
+        version_mismatch = args.ui_version is not None and package_version is not None and args.ui_version != package_version
         worker = Worker(collector, store, mode)
+        if version_mismatch:
+            emit({'schema_version': 1, 'type': 'error', 'code': 'UI_VERSION_MISMATCH'})
         emit(worker.sample())
         if not args.watch:
             return 0
@@ -84,6 +103,9 @@ def main(argv=None):
         return 0
     except BrokenPipeError:
         return 0
+    except WorkerLocked:
+        emit({'schema_version': 1, 'type': 'error', 'code': 'WORKER_ALREADY_RUNNING'})
+        return 3
     except (OSError, ValueError, OverflowError, sqlite3.Error):
         # Never echo paths, command data, exception text, or user process names.
         emit({'schema_version': 1, 'type': 'error', 'code': 'WORKER_INITIALIZATION_OR_STORAGE_ERROR'})

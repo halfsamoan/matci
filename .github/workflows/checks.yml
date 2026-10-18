@@ -17,6 +17,7 @@ jobs:
       - run: node --check extension/extension.js
       - run: node --check extension/prefs.js
       - run: node --check extension/notchDock.js
+      - run: npx --yes eslint@9 --no-config-lookup -c eslint.config.mjs extension/*.js
       - run: node --test tests/*.mjs
       - run: node --check web/app.js
       - run: python -m matci --mode demo --once --state-dir /tmp/matci-ci-demo

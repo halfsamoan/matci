@@ -18,6 +18,7 @@ const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
 export default class Matci extends Extension {
     enable() {
         this._enabled = true;
+        this._clearPendingRelogin();
         this._generation = 0;
         this._signals = [];
         this._pending = new Map();
@@ -30,7 +31,9 @@ export default class Matci extends Extension {
         this._snapshot = null;
         this._receivedAt = 0;
         this._expanded = false;
-        this._dockStateKey = null;
+        this._scrollView = null;
+        this._rowButtons = new Map();
+        this._roleButtons = new Map();
         this._sleeping = false;
         this._selected = new Set();
         this._message = '메모리 관측 연결 중';
@@ -48,13 +51,14 @@ export default class Matci extends Extension {
             }
             return Clutter.EVENT_PROPAGATE;
         });
-        Main.layoutManager.addChrome(this._root, {affectsStruts: false, trackFullscreen: true});
+        Main.layoutManager.addChrome(this._root, {affectsStruts: false, trackFullscreen: false});
         const staleIndicator = Main.panel.statusArea[this.uuid];
         if (staleIndicator) {
             Main.panel.statusArea[this.uuid] = null;
             staleIndicator.destroy();
         }
-        this._indicator = new PanelMenu.Button(0.0, 'matci 메모리');
+        this._indicator = new PanelMenu.Button(0.0, 'matci 메모리', true);
+        this._indicator.can_focus = true;
         this._indicator.add_style_class_name('matci-panel-button');
         const panelStatus = new St.BoxLayout({style_class: 'matci-panel-status'});
         this._indicatorIcon = new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 14});
@@ -62,14 +66,19 @@ export default class Matci extends Extension {
         panelStatus.add_child(this._indicatorIcon);
         panelStatus.add_child(this._indicatorLabel);
         this._indicator.add_child(panelStatus);
-        this._connect(this._indicator.menu, 'open-state-changed', (_menu, isOpen) => {
-            if (!isOpen) return;
-            this._indicator.menu.close();
+        const toggle = () => {
             if (this._expanded) this._collapse(true); else this._expand(true);
-        });
+            return Clutter.EVENT_STOP;
+        };
+        this._connect(this._indicator, 'button-press-event', toggle);
+        this._connect(this._indicator, 'touch-event', (_actor, event) =>
+            event.type() === Clutter.EventType.TOUCH_BEGIN ? toggle() : Clutter.EVENT_PROPAGATE);
+        this._connect(this._indicator, 'key-press-event', (_actor, event) =>
+            [Clutter.KEY_Return, Clutter.KEY_space, Clutter.KEY_KP_Enter].includes(event.get_key_symbol()) ?
+                toggle() : Clutter.EVENT_PROPAGATE);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._dock = new DockParticipant({id: this.uuid, actor: this._root, monitor: () => this._monitor(), order: 1,
-            onYield: () => this._collapse()});
+            onYield: () => this._collapse(false, {keepReview: true})});
         this._actions = new CloseController({snapshot: () => this._snapshot,
             uuid: () => GLib.uuid_string_random(), now: () => this._now(),
             protection: (g, s) => this._protection(g, s), groups: s => this._groups(s),
@@ -101,10 +110,23 @@ export default class Matci extends Extension {
     }
     _now() { return GLib.get_monotonic_time() / 1000; }
     _connect(object, signal, callback) { this._signals.push([object, object.connect(signal, callback)]); }
+    _clearPendingRelogin() {
+        const path = GLib.build_filenamev([GLib.get_user_state_dir(), 'matci', 'pending-relogin.json']);
+        try {
+            const [, contents] = Gio.File.new_for_path(path).load_contents(null);
+            const marker = JSON.parse(new TextDecoder().decode(contents));
+            if (Number(marker.installed) === Number(this.metadata.version))
+                Gio.File.new_for_path(path).delete(null);
+        } catch (_error) {
+            // Keep unmatched or unreadable markers for the next diagnostic run.
+        }
+    }
     _updatePanel() {
         const value = percent(this._snapshot?.memory?.used_ratio);
-        this._indicatorLabel.text = value;
-        this._indicator.accessible_name = `matci RAM ${value}. 상세 ${this._expanded ? '접기' : '열기'}`;
+        this._indicatorLabel.text = this._versionMismatch ? '!' : value;
+        this._indicatorIcon.icon_name = this._versionMismatch ? 'dialog-warning-symbolic' : 'utilities-system-monitor-symbolic';
+        this._indicator.accessible_name = this._versionMismatch ? `matci 오류 · ${this._message}` :
+            `matci RAM ${value}. 상세 ${this._expanded ? '접기' : '열기'}`;
     }
     _monitor() { return Main.layoutManager.monitors[this._settings.get_int('monitor-index')] ?? Main.layoutManager.primaryMonitor; }
     _visibility() {
@@ -121,13 +143,7 @@ export default class Matci extends Extension {
         }
         this._geometry = {width, height};
         // The coordinator owns visibility and placement, including collision fallback.
-        const monitor = this._monitor();
-        const stateKey = JSON.stringify([width, height, visible, this._expanded,
-            monitor?.x, monitor?.y, monitor?.width, monitor?.height, Main.panel.height]);
-        if (stateKey !== this._dockStateKey) {
-            this._dockStateKey = stateKey;
-            this._dock.update({width, height, visible, expanded: this._expanded});
-        }
+        this._dock.update({width, height, visible, expanded: this._expanded});
     }
     _expand(manual = false) {
         if (!this._dock.claim(manual ? 100 : 30)) return;
@@ -135,10 +151,11 @@ export default class Matci extends Extension {
         this._expanded = true; this._render();
         if (manual) this._root.grab_key_focus();
     }
-    _collapse(restoreFocus = false) {
+    _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
-        if (!this._actions?.busy) this._actions?.cancel();
-        this._selected.clear(); this._render();
+        if (!keepReview && !this._actions?.busy) this._actions?.cancel();
+        if (!keepReview) this._selected.clear();
+        this._render();
         if (restoreFocus) this._indicator.grab_key_focus();
     }
     _label(text, style = 'matci-caption') {
@@ -153,12 +170,33 @@ export default class Matci extends Extension {
         button.connect('clicked', action);
         return button;
     }
-    _iconButton(iconName, accessibleName, action, sensitive = true) {
+    _iconButton(iconName, accessibleName, action, sensitive = true, role = null) {
         const button = new St.Button({style_class: 'matci-icon-button', can_focus: sensitive,
             reactive: sensitive, accessible_name: accessibleName,
             child: new St.Icon({icon_name: iconName, icon_size: 16})});
+        this._tagRole(button, role);
         button.connect('clicked', action);
         return button;
+    }
+    _tagRole(button, role) {
+        if (role) {
+            button._matciRole = role;
+            this._roleButtons.set(role, button);
+        }
+        return button;
+    }
+    _scrollAdjustment(scroll) {
+        try {
+            const adjustment = scroll?.vscroll?.adjustment;
+            if (adjustment) return adjustment;
+        } catch { /* GNOME versions expose the vertical adjustment differently. */ }
+        try { return scroll?.vadjustment ?? null; }
+        catch { return null; }
+    }
+    _isWithin(actor, ancestor) {
+        for (let current = actor; current; current = current.get_parent?.())
+            if (current === ancestor) return true;
+        return false;
     }
     _protection(group, snapshot) {
         return protection(group, snapshot, this._ownerUid, this._settings.get_strv('protected-app-ids'),
@@ -205,6 +243,16 @@ export default class Matci extends Extension {
     }
     _render() {
         if (!this._enabled) return;
+        const oldAdjustment = this._scrollAdjustment(this._scrollView);
+        const oldScrollValue = Number(oldAdjustment?.value);
+        const previousScroll = Number.isFinite(oldScrollValue) ? oldScrollValue : 0;
+        const focusedActor = global.stage.get_key_focus();
+        const focusWasInside = this._isWithin(focusedActor, this._root);
+        const focusedAppId = focusedActor?._matciAppId ?? null;
+        const focusedRole = focusedActor?._matciRole ?? null;
+        this._rowButtons = new Map();
+        this._roleButtons = new Map();
+        this._scrollView = null;
         for (const child of this._root.get_children()) child.destroy();
         this._root.remove_style_class_name('matci-expanded');
         if (this._expanded) this._root.add_style_class_name('matci-expanded');
@@ -217,14 +265,14 @@ export default class Matci extends Extension {
             const brand = new St.BoxLayout({style_class: 'matci-brand'});
             brand.add_child(new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}));
             brand.add_child(this._label('RAM', 'matci-title'));
-            const state = demo ? 'DEMO' : snapshot?.health === 'ok' ? 'LIVE' :
+            const state = demo ? 'DEMO' : this._versionMismatch ? 'UPDATE' : snapshot?.health === 'ok' ? 'LIVE' :
                 snapshot?.health === 'error' ? 'STALE' : 'SYNC';
             brand.add_child(this._label(state,
                 demo ? 'matci-state-demo' : state === 'LIVE' ? 'matci-state-live' : 'matci-state-stale'));
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
-            tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this.openPreferences()));
-            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true)));
+            tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this.openPreferences(), true, 'settings'));
+            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true), true, 'collapse'));
             header.add_child(tools);
             this._root.add_child(header);
 
@@ -248,6 +296,7 @@ export default class Matci extends Extension {
 
             const scroll = new St.ScrollView({style_class: 'matci-scroll', x_expand: true, y_expand: false,
                 hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC});
+            this._scrollView = scroll;
             const list = new St.BoxLayout({vertical: true, style_class: 'matci-list'});
             scroll.set_child(list);
             const review = this._actions?.review;
@@ -274,6 +323,8 @@ export default class Matci extends Extension {
                     const select = new St.Button({style_class: reason ? 'matci-app-protected' : 'matci-app-select',
                         can_focus: !reason && !this._actions.busy, reactive: !reason && !this._actions.busy,
                         accessible_name: `${group.name}, ${selected ? '선택됨' : '선택 안 됨'}, ${reason ?? '수동 검토 가능'}`});
+                    select._matciAppId = group.appId;
+                    this._rowButtons.set(group.appId, select);
                     const appContent = new St.BoxLayout({style_class: 'matci-app-name-row'});
                     try {
                         const appIcon = group.app.create_icon_texture(18);
@@ -319,19 +370,20 @@ export default class Matci extends Extension {
                 const actionText = this._actionStatus === 'observing' ? '요청됨 · 창 상태 확인 중' :
                     this._actionStatus === 'completed' ? '창 닫힘 · RAM 재측정' : this._message;
                 list.add_child(this._label(actionText, 'matci-status'));
-            } else if (snapshot?.health && snapshot.health !== 'ok') {
+            } else if (this._versionMismatch || (snapshot?.health && snapshot.health !== 'ok')) {
                 list.add_child(this._label(this._message, 'matci-status'));
             }
             this._root.add_child(scroll);
             const controls = new St.BoxLayout({style_class: 'matci-controls'});
             if (review) {
-                controls.add_child(this._button('취소', () => { this._actions.cancel(); this._actionStatus = null; this._render(); }));
-                controls.add_child(this._button('닫기 요청', () => this._confirm(), !this._actions.busy));
+                controls.add_child(this._tagRole(this._button('취소', () => { this._actions.cancel(); this._actionStatus = null; this._render(); }), 'cancel'));
+                controls.add_child(this._tagRole(this._button('닫기 요청', () => this._confirm(), !this._actions.busy), 'confirm'));
             } else {
-                controls.add_child(this._iconButton('view-refresh-symbolic', 'RAM 새로고침', () => this._refresh(), Boolean(snapshot) && !this._actions.busy));
+                controls.add_child(this._iconButton('view-refresh-symbolic', 'RAM 새로고침', () => this._refresh(), Boolean(snapshot) && !this._actions.busy, 'refresh'));
                 const reviewButton = this._button(`검토 ${this._selected.size}`, () => this._review(),
                     !demo && this._selected.size > 0 && !this._actions.busy);
                 reviewButton.add_style_class_name('matci-primary-button');
+                this._tagRole(reviewButton, 'review');
                 controls.add_child(reviewButton);
             }
             this._root.add_child(controls);
@@ -349,6 +401,32 @@ export default class Matci extends Extension {
                 Math.ceil(childHeight + Math.max(0, children.length - 1) * 8 + 27)));
         } else this._contentHeight = 1;
         this._visibility();
+        if (this._expanded && previousScroll > 0) {
+            const scroll = this._scrollView;
+            let attempts = 0;
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+                if (!this._enabled || !this._expanded || this._scrollView !== scroll)
+                    return GLib.SOURCE_REMOVE;
+                attempts++;
+                const adjustment = this._scrollAdjustment(scroll);
+                const upper = Number(adjustment?.upper);
+                const pageSize = Number(adjustment?.page_size);
+                if (adjustment && Number.isFinite(upper) && Number.isFinite(pageSize) && (upper > 0 || previousScroll === 0)) {
+                    adjustment.value = Math.min(previousScroll, Math.max(0, upper - pageSize));
+                    return GLib.SOURCE_REMOVE;
+                }
+                if (attempts >= 5) {
+                    if (adjustment) adjustment.value = previousScroll;
+                    return GLib.SOURCE_REMOVE;
+                }
+                return GLib.SOURCE_CONTINUE;
+            });
+        }
+        if (this._expanded && focusWasInside) {
+            const target = focusedAppId ? this._rowButtons.get(focusedAppId) :
+                focusedRole ? this._roleButtons.get(focusedRole) : null;
+            (target?.can_focus ? target : this._root).grab_key_focus();
+        }
     }
     _review() {
         if (!this._dock.claim(100)) return;
@@ -361,7 +439,10 @@ export default class Matci extends Extension {
     async _confirm() {
         if (!this._dock.claim(100)) return;
         try { await this._actions.confirm(); }
-        catch (_error) { /* Controller supplies the visible reason. */ }
+        catch (error) {
+            this._message = error?.message ?? '검토가 만료되었습니다. 다시 선택하세요.';
+            this._actionStatus = 'error';
+        }
         this._selected.clear(); this._render();
     }
     async _refresh() {
@@ -391,6 +472,7 @@ export default class Matci extends Extension {
         const generation = ++this._generation;
         this._cancellable = new Gio.Cancellable();
         this._session = null;
+        this._versionMismatch = false;
         this._stdoutText = '';
         this._decoder = new TextDecoder();
         this._goodSamples = 0;
@@ -398,7 +480,8 @@ export default class Matci extends Extension {
         try {
             const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE});
             launcher.set_cwd(this.path);
-            this._worker = launcher.spawnv(['python3', '-u', '-m', 'matci', '--watch', '--mode', this._settings.get_string('mode'), '--interval', '5']);
+            this._worker = launcher.spawnv(['python3', '-u', '-m', 'matci', '--watch', '--mode', this._settings.get_string('mode'), '--interval', '5',
+                '--ui-version', String(this.metadata.version)]);
             this._input = this._worker.get_stdout_pipe();
             this._output = this._worker.get_stdin_pipe();
             this._readChunk(generation);
@@ -432,6 +515,7 @@ export default class Matci extends Extension {
         });
     }
     _incoming(message) {
+        if (this._versionMismatch) return;
         if (message.schema_version !== 1 || !['snapshot', 'ack', 'error'].includes(message.type)) throw new Error('protocol');
         if (message.type === 'snapshot') {
             if (!message.session_id || !message.sample_id || !message.boot_id || !Number.isFinite(message.monotonic_ms) ||
@@ -443,12 +527,28 @@ export default class Matci extends Extension {
             this._updatePanel();
             this._receivedAt = this._now();
             if (++this._goodSamples >= 3) this._failures = 0;
-            if (!this._actions.busy && !this._actions.review) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :
+            if (!this._actions.busy && !this._actions.review && !this._versionMismatch) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :
                 `${message.health} · PSI some ${message.pressure?.some_avg10 ?? '확인 불가'} · 관측 갱신됨`;
             this._suggest(message);
             // Preserve keyboard focus on confirmation and observation controls.
             // Fresh samples still replace the underlying identity for close checks.
             if (!this._actions.review && !this._actions.busy) this._render();
+        } else if (message.type === 'error' && !message.request_id && !this._session) {
+            const errorText = {
+                WORKER_ALREADY_RUNNING: '다른 matci 관측기가 실행 중입니다 · 이전 세션 프로세스를 확인하세요',
+                UI_VERSION_MISMATCH: '확장·관측기 버전 불일치 · 설치 상태를 확인하세요',
+                LIVE_REQUIRES_LINUX: 'Linux에서만 실제 관측이 가능합니다',
+                WORKER_INITIALIZATION_OR_STORAGE_ERROR: '관측기 저장소를 열 수 없습니다 · 상태 폴더 권한을 확인하세요',
+            }[message.code] ?? '관측기 시작 오류';
+            if (message.code === 'UI_VERSION_MISMATCH') {
+                this._versionMismatch = true;
+                this._stopWorker();
+                this._message = errorText;
+                this._render();
+                return;
+            }
+            this._workerFailed(errorText, message.code === 'WORKER_ALREADY_RUNNING' ? 60 : undefined);
+            return;
         } else if (message.session_id !== this._session) throw new Error('wrong session');
         if (message.request_id) {
             const pending = this._pending.get(message.request_id);
@@ -463,7 +563,8 @@ export default class Matci extends Extension {
         }
     }
     _request(type, body = {}) {
-        if (!this._enabled || !this._worker || !this._session || this._queue.length >= 128 || this._pending.size >= 128)
+        if (!this._enabled || this._versionMismatch || !this._worker || !this._session ||
+            this._queue.length >= 128 || this._pending.size >= 128)
             return Promise.reject(new Error('관측 연결 준비가 필요합니다.'));
         const requestId = GLib.uuid_string_random();
         const message = {schema_version: 1, type, request_id: requestId, session_id: this._session, ...body};
@@ -493,10 +594,10 @@ export default class Matci extends Extension {
             this._delays.set(id, reject);
         });
     }
-    _workerFailed(message) {
+    _workerFailed(message, waitSeconds = null) {
         if (!this._enabled) return;
         this._stopWorker(); this._message = message; this._render();
-        const wait = Math.min(60, 5 * 2 ** Math.min(this._failures++, 4));
+        const wait = Number.isFinite(waitSeconds) ? waitSeconds : Math.min(60, 5 * 2 ** Math.min(this._failures++, 4));
         this._restartTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, wait, () => {
             this._restartTimer = 0; this._startWorker(); return GLib.SOURCE_REMOVE;
         });

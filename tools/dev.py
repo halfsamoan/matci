@@ -1,5 +1,6 @@
 """Run both extensions in an isolated, watched nested GNOME Shell session."""
 import argparse
+import filecmp
 import json
 import os
 from pathlib import Path
@@ -23,18 +24,28 @@ def run(command, cwd):
 
 
 def run_checks(matci_root, archsport_root):
+    for filename in ('extension/notchDock.js', 'extension/dockModel.js'):
+        if not filecmp.cmp(matci_root / filename, archsport_root / filename, shallow=False):
+            print(f'공유 dock 파일이 서로 다릅니다: {filename}', file=sys.stderr)
+            return False
+    print('✓ shared dock files identical', flush=True)
     compiler = shutil.which('glib-compile-schemas')
     node = shutil.which('node')
-    if not compiler or not node:
-        print('glib-compile-schemas와 Node.js가 필요합니다.', file=sys.stderr)
+    npx = shutil.which('npx')
+    if not compiler or not node or not npx:
+        print('glib-compile-schemas, Node.js, npx가 필요합니다.', file=sys.stderr)
         return False
     checks = (
         ('Archsport Python', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests'], archsport_root),
         ('Archsport Node', [node, '--test', 'tests/dock.test.mjs'], archsport_root),
+        ('Archsport ESLint', [npx, '--yes', 'eslint@9', '--no-config-lookup', '-c', 'eslint.config.mjs',
+                              *map(str, sorted((archsport_root / 'extension').glob('*.js')))], archsport_root),
         ('Archsport schema', [compiler, '--strict', '--dry-run', 'extension/schemas'], archsport_root),
         ('matci Python', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests'], matci_root),
         ('matci Node', [node, '--test', 'tests/dock.test.mjs', 'tests/native-actions.test.mjs',
                         'tests/native-worker.integration.test.mjs'], matci_root),
+        ('matci ESLint', [npx, '--yes', 'eslint@9', '--no-config-lookup', '-c', 'eslint.config.mjs',
+                          *map(str, sorted((matci_root / 'extension').glob('*.js')))], matci_root),
         ('matci schema', [compiler, '--strict', '--dry-run', 'extension/schemas'], matci_root),
     )
     passed = True

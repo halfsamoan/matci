@@ -58,7 +58,7 @@ Shell의 앱 매핑/분류는 `record_app_view`로 해당 sample_id에 연결해
 
 GNOME에서 Archsport는 경기 상태일 때만 compact 280×46 및 expanded overlay를 사용한다. matci idle에는 compact surface가 없고 패널 RAM 항목만 보인다. 두 확장 overlay는 320ms EASE_OUT_CUBIC, 패널 아래·`affectsStruts:false`를 따른다. 웹 수치는 합성 프리뷰에 한정한다. 상세 발췌와 출처 해시는 `replica/design/archsport-motion.json`에 있다.
 
-Archsport를 함께 사용하는 사용자를 위한 기본 슬롯 정책:
+초기 제안: Archsport를 함께 사용하는 사용자를 위한 기본 슬롯 정책. **현재 동작 명세가 아니다.** 실제 공용 dock 계약은 [`DUAL_NOTCH.md`](DUAL_NOTCH.md)와 최신 인계 문서를 따른다.
 
 - 중앙은 Archsport 우선. matci 단독이면 중앙을 사용한다.
 - Archsport 활성 시 matci는 중앙 왼쪽, 패널 아래 같은 Y에 배치한다. **두 actor의 실제 allocation과 좌우 12 logical px 간격이 확보될 때만** 보조 노치를 보인다.

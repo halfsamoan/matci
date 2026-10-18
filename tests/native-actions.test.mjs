@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
 import {protection, sameTargets, interactionAge} from '../extension/policy.js';
+
+const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
 const proc = {uid: 1000, pid: 42, start_ticks: 8, identity_observed_monotonic_ms: 100};
 const sample = {mode: 'live', sample_id: 'a', monotonic_ms: 100, processes: [proc]};
@@ -35,7 +38,7 @@ function fixture() {
         request: async (type, body) => { requests.push([type, body]); return {type: 'ack', status: body.status, action_id: body.action_id}; },
         close: () => { closed++; current = []; }, delay: async ms => { now += ms; }, onState: () => {}};
     return {a, requests, controller: new CloseController(a), closed: () => closed, mappings: () => mappings,
-        setGroups: groups => { current = groups; }};
+        setGroups: groups => { current = groups; }, setNow: value => { now = value; }};
 }
 test('requested commit ack precedes close; single-use review observes completion', async () => {
     const f = fixture(); f.controller.prepare([group]);
@@ -80,6 +83,44 @@ test('remaining windows time out after ten seconds without escalation or repeate
     let calls = 0; f.a.close = () => { calls++; };
     assert.equal(await f.controller.confirm(), 'timeout'); assert.equal(calls, 1); assert.equal(f.a.now(), 10300);
     assert.equal(f.requests.at(-1)[1].items[0].result, 'still_running');
+});
+test('a pending review remains usable after a temporary dock yield and reentry within 60 seconds', async () => {
+    const f = fixture();
+    const review = f.controller.prepare([group]);
+    // A temporary visual yield hides matci but deliberately does not call cancel().
+    f.setNow(59999);
+    assert.equal(f.controller.review, review);
+    assert.equal(await f.controller.confirm(), 'completed');
+});
+test('a yielded review older than 60 seconds is rejected before close', async () => {
+    const f = fixture();
+    f.controller.prepare([group]);
+    f.setNow(60001);
+    await assert.rejects(f.controller.confirm(), /검토가 만료되었습니다/);
+    assert.equal(f.closed(), 0);
+    assert.equal(f.controller.review, null);
+});
+test('a dock yield preserves the native review and selected app IDs', () => {
+    assert.ok(extensionSource.includes('onYield: () => this._collapse(false, {keepReview: true})'));
+    assert.ok(extensionSource.includes('if (!keepReview && !this._actions?.busy) this._actions?.cancel()'));
+    assert.ok(extensionSource.includes('if (!keepReview) this._selected.clear()'));
+    assert.ok(extensionSource.includes('this._actionStatus = \'error\';'));
+});
+test('rerender retains scroll adjustment and restores the focused app or control', () => {
+    assert.ok(extensionSource.includes('scroll?.vscroll?.adjustment'));
+    assert.ok(extensionSource.includes('scroll?.vadjustment'));
+    assert.ok(extensionSource.includes('const focusedAppId = focusedActor?._matciAppId ?? null'));
+    assert.ok(extensionSource.includes('const focusedRole = focusedActor?._matciRole ?? null'));
+    assert.ok(extensionSource.includes('this._rowButtons.set(group.appId, select)'));
+    assert.ok(extensionSource.includes('adjustment.value = Math.min(previousScroll, Math.max(0, upper - pageSize))'));
+    assert.ok(extensionSource.includes('(target?.can_focus ? target : this._root).grab_key_focus()'));
+});
+test('panel button bypasses the dummy popup and handles pointer, touch, and keyboard', () => {
+    assert.ok(extensionSource.includes("new PanelMenu.Button(0.0, 'matci 메모리', true)"));
+    assert.ok(extensionSource.includes("this._connect(this._indicator, 'button-press-event', toggle)"));
+    assert.ok(extensionSource.includes("this._connect(this._indicator, 'touch-event'"));
+    assert.ok(extensionSource.includes("this._connect(this._indicator, 'key-press-event'"));
+    assert.ok(!extensionSource.includes("'open-state-changed'"));
 });
 test('window-close failure records partial, never falsely records completed', async () => {
     const f = fixture(); f.controller.prepare([group]); f.a.close = () => { throw new Error('disposed window'); };

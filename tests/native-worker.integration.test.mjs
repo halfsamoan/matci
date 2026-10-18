@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {spawn, spawnSync} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {randomUUID} from 'node:crypto';
+import {cpSync, mkdtempSync, mkdirSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CloseController} from '../extension/actions.js';
 import {appView, protection} from '../extension/policy.js';
@@ -30,6 +33,46 @@ with tempfile.TemporaryDirectory() as directory:
     finally:
         store.close()
 `;
+
+test('CLI emits an initial UI version mismatch code before its snapshot', () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'matci-version-'));
+    try {
+        const result = spawnSync(process.env.MATCI_PYTHON ?? 'python3',
+            ['-m', 'matci', '--once', '--mode', 'demo', '--state-dir', stateDir, '--ui-version', '999'], {
+                cwd: fileURLToPath(new URL('../', import.meta.url)), encoding: 'utf8', timeout: 10000,
+            });
+        assert.equal(result.status, 0, result.stderr);
+        const lines = result.stdout.trim().split('\n').map(line => JSON.parse(line));
+        assert.equal(lines[0].type, 'error');
+        assert.equal(lines[0].code, 'UI_VERSION_MISMATCH');
+        assert.equal(lines[1].type, 'snapshot');
+    } finally {
+        rmSync(stateDir, {recursive: true, force: true});
+    }
+});
+
+test('CLI accepts an exact UI version from installed extension metadata', () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'matci-installed-version-'));
+    const dataHome = join(stateDir, 'data');
+    const installed = join(dataHome, 'gnome-shell', 'extensions', 'matci@local');
+    mkdirSync(installed, {recursive: true});
+    cpSync(fileURLToPath(new URL('../matci', import.meta.url)), join(installed, 'matci'), {recursive: true});
+    cpSync(fileURLToPath(new URL('../data', import.meta.url)), join(installed, 'data'), {recursive: true});
+    cpSync(fileURLToPath(new URL('../migrations', import.meta.url)), join(installed, 'migrations'), {recursive: true});
+    writeFileSync(join(installed, 'metadata.json'), JSON.stringify({uuid: 'matci@local', version: 8}));
+    try {
+        const result = spawnSync(process.env.MATCI_PYTHON ?? 'python3',
+            ['-m', 'matci', '--once', '--mode', 'demo', '--state-dir', join(stateDir, 'state'), '--ui-version', '8'], {
+                cwd: installed, encoding: 'utf8', timeout: 10000,
+            });
+        assert.equal(result.status, 0, result.stderr);
+        const lines = result.stdout.trim().split('\n').map(line => JSON.parse(line));
+        assert.equal(lines[0].type, 'snapshot');
+        assert.equal(lines.some(line => line.code === 'UI_VERSION_MISMATCH'), false);
+    } finally {
+        rmSync(stateDir, {recursive: true, force: true});
+    }
+});
 
 test('JS close gate and Python Worker persist requested before synthetic close and final observed delta', {timeout: 15000}, async t => {
     const child = spawn(process.env.MATCI_PYTHON ?? 'python3', ['-u', '-c', HARNESS], {

@@ -11,6 +11,10 @@ from .model import new_id, utc_now
 from .policy import BUILTIN_APP_IDS
 
 
+class WorkerLocked(RuntimeError):
+    """Raised when another matci worker owns this state directory."""
+
+
 def current_uid():
     # Windows supports synthetic demos only. No Windows credential is passed to Linux.
     return os.getuid() if hasattr(os, 'getuid') else 0
@@ -59,7 +63,10 @@ class Store:
                 msvcrt.locking(self.lock.fileno(), msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
-                fcntl.flock(self.lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                try:
+                    fcntl.flock(self.lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError as exc:
+                    raise WorkerLocked from exc
             path = self.directory / 'state.db'
             private_path(path)
             self.connection = sqlite3.connect(path, timeout=1)
