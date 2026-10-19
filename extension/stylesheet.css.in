@@ -1,12 +1,12 @@
 .matci-notch {
     background-color: {{color.surfacePrimary}};
     color: {{color.labelPrimary}};
-    border-radius: 0 0 {{radius.surface}}px {{radius.surface}}px;
-    padding: {{spacing.sm}}px {{spacing.lg}}px {{spacing.sm}}px;
+    border-radius: {{radius.surface}}px;
+    padding: {{spacing.xs}}px {{spacing.md}}px;
     spacing: {{spacing.sm}}px;
     box-shadow: {{shadow.surface}};
 }
-.matci-notch.matci-expanded { padding: {{spacing.lg}}px {{spacing.between}}px {{spacing.lg}}px; spacing: {{spacing.md}}px; }
+.matci-notch.matci-expanded { padding: {{spacing.md}}px {{spacing.lg}}px; spacing: {{spacing.sm}}px; }
 .matci-header, .matci-brand, .matci-header-tools, .matci-controls,
 .matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
 .matci-reason-row, .matci-panel-status { spacing: 8px; }
@@ -21,19 +21,19 @@
 }
 .matci-state-note { color: {{color.labelTertiary}}; }
 .matci-state-error { color: {{color.accentCritical}}; }
-.matci-metric-row { min-height: 42px; spacing: {{spacing.md}}px; }
+.matci-metric-row { min-height: 38px; spacing: {{spacing.md}}px; }
 .matci-metric { color: {{color.labelPrimary}}; font-size: {{typography.hero}}px; font-weight: 600; }
 .matci-metric-detail { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
 .matci-meter-track { border-radius: 3px; background-color: {{color.surfaceTrack}}; }
 .matci-meter-fill { border-radius: 3px; background-color: {{color.labelSecondary}}; }
 .matci-meter-rest { background-color: transparent; }
 .matci-footnote { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
-.matci-scroll { min-height: 0px; max-height: 160px; }
+.matci-scroll { min-height: 0px; max-height: 140px; }
 .matci-list { spacing: {{spacing.sm}}px; padding-top: 4px; }
-.matci-section { min-height: 30px; }
+.matci-section { min-height: 24px; }
 .matci-section-title { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; font-weight: 700; }
-.matci-app-row { min-height: 42px; padding: 4px 7px; }
-.matci-app-select, .matci-app-protected { min-width: 225px; padding: 6px 8px; border-radius: 12px; background-color: transparent; }
+.matci-app-row { min-height: 38px; padding: 4px; }
+.matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 12px; background-color: transparent; }
 .matci-app-select:hover { background-color: {{color.separatorSubtle}}; }
 .matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
 .matci-app-select StIcon { color: {{color.focus}}; }
@@ -50,7 +50,7 @@
 .matci-empty { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; padding: 12px 0; }
 .matci-status { color: {{color.labelSecondary}}; font-size: {{typography.caption}}px; }
 .matci-status-error { color: {{color.accentCritical}}; font-size: {{typography.caption}}px; }
-.matci-controls { min-height: 38px; }
+.matci-controls { min-height: 34px; }
 .matci-button, .matci-icon-button {
     color: {{color.labelPrimary}};
     border-radius: 14px;

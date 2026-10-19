@@ -340,6 +340,8 @@ export default class Matci extends Extension {
         const snapshot = this._snapshot;
         const memory = snapshot?.memory;
         const demo = snapshot?.mode === 'demo';
+        const surfaceWidth = Math.min(DESIGN.geometry.matciExpanded,
+            Math.max(1, (this._monitor()?.width ?? 800) - 24));
         if (this._expanded) {
             const header = new St.BoxLayout({style_class: 'matci-header'});
             const brand = new St.BoxLayout({style_class: 'matci-brand'});
@@ -366,7 +368,7 @@ export default class Matci extends Extension {
             metric.add_child(memoryDetail);
             this._root.add_child(metric);
             const ratio = Number.isFinite(memory?.used_ratio) ? Math.max(0, Math.min(1, memory.used_ratio)) : 0;
-            const innerWidth = Math.max(1, Math.min(400, (this._monitor()?.width ?? 560) - 60));
+            const innerWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
             const meter = new St.BoxLayout({style_class: 'matci-meter-track', x_expand: true, height: 4});
             meter.add_child(new St.Widget({style_class: 'matci-meter-fill', width: Math.round(innerWidth * ratio), height: 4}));
             meter.add_child(new St.Widget({style_class: 'matci-meter-rest', x_expand: true, height: 4}));
@@ -468,6 +470,9 @@ export default class Matci extends Extension {
             } else if (this._versionMismatch || (snapshot?.health && snapshot.health !== 'ok')) {
                 list.add_child(this._label(this._message, 'matci-status-error'));
             }
+            const contentWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
+            const [, listNatural] = list.get_preferred_height(contentWidth);
+            scroll.set_height(Math.min(140, Math.max(1, Math.ceil(listNatural))));
             this._root.add_child(scroll);
             const controls = new St.BoxLayout({style_class: 'matci-controls'});
             if (review) {
@@ -485,16 +490,15 @@ export default class Matci extends Extension {
         }
         this._root.accessible_name = `matci ${demo ? '합성 시연' : '메모리'}. ${percent(memory?.used_ratio)} 사용. ${this._message}`;
         if (this._expanded) {
-            const width = Math.min(DESIGN.geometry.matciExpanded,
-                Math.max(1, (this._monitor()?.width ?? 800) - 24));
-            const contentWidth = Math.max(1, width - 36);
+            const contentWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
             const children = this._root.get_children();
             const childHeight = children.reduce((sum, child) => {
                 const [, natural] = child.get_preferred_height(contentWidth);
                 return sum + natural;
             }, 0);
-            this._contentHeight = Math.min(350, Math.max(190,
-                Math.ceil(childHeight + Math.max(0, children.length - 1) * 8 + 27)));
+            this._contentHeight = Math.min(350, Math.max(168,
+                Math.ceil(childHeight + Math.max(0, children.length - 1) * DESIGN.spacing.sm +
+                    DESIGN.spacing.xl)));
         } else this._contentHeight = 1;
         this._visibility();
         if (opening && this._interface.get_boolean('enable-animations')) {
