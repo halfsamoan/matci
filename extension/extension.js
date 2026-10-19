@@ -39,6 +39,7 @@ export default class Matci extends Extension {
         this._sleeping = false;
         this._selected = new Set();
         this._renderedExpanded = false;
+        this._closingTimer = 0;
         this._message = '메모리 관측 연결 중';
         this._failures = this._goodSamples = 0;
         this._restartTimer = this._eventTimer = 0;
@@ -126,6 +127,8 @@ export default class Matci extends Extension {
         this._shellEnding = true;
         this._enabled = false;
         this._sleeping = true;
+        if (this._closingTimer) GLib.source_remove(this._closingTimer);
+        this._closingTimer = 0;
         this._dock?.shutdown();
         this._stopWorker();
         if (this._sleepSubscription) Gio.DBus.system.signal_unsubscribe(this._sleepSubscription);
@@ -274,6 +277,46 @@ export default class Matci extends Extension {
     }
     _render() {
         if (!this._enabled || this._shellEnding) return;
+        if (!this._expanded && this._closingTimer) {
+            this._updatePanel();
+            this._visibility();
+            return;
+        }
+        if (this._expanded && this._closingTimer) {
+            GLib.source_remove(this._closingTimer);
+            this._closingTimer = 0;
+        }
+        if (!this._expanded && this._renderedExpanded && this._interface.get_boolean('enable-animations')) {
+            // Keep the current content for the short reverse morph; clipping follows the shrinking surface.
+            // Controls stop accepting input as soon as the expanded state is dismissed.
+            this._renderedExpanded = false;
+            this._rowButtons.clear();
+            this._roleButtons.clear();
+            this._scrollView = null;
+            for (const child of this._root.get_children()) {
+                const descendants = [child];
+                while (descendants.length) {
+                    const actor = descendants.pop();
+                    actor.reactive = false;
+                    actor.can_focus = false;
+                    descendants.push(...actor.get_children());
+                }
+                child.ease({opacity: 0, duration: DESIGN.motion.micro,
+                    mode: Clutter.AnimationMode[DESIGN.motion.collapseMode]});
+            }
+            this._contentHeight = 1;
+            this._updatePanel();
+            this._visibility();
+            this._closingTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DESIGN.motion.collapse, () => {
+                this._closingTimer = 0;
+                if (this._enabled && !this._expanded && this._root) {
+                    for (const child of this._root.get_children()) child.destroy();
+                    this._root.remove_style_class_name('matci-expanded');
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+            return;
+        }
         const oldAdjustment = this._scrollAdjustment(this._scrollView);
         const oldScrollValue = Number(oldAdjustment?.value);
         const previousScroll = Number.isFinite(oldScrollValue) ? oldScrollValue : 0;
@@ -291,8 +334,8 @@ export default class Matci extends Extension {
         const lightAppearance = this._interface.get_string('color-scheme') === 'prefer-light' ||
             (this._interface.get_string('color-scheme') === 'default' &&
                 !this._interface.get_string('gtk-theme').toLowerCase().includes('dark'));
-        this._root.remove_style_class_name('matci-light');
         if (lightAppearance) this._root.add_style_class_name('matci-light');
+        else this._root.remove_style_class_name('matci-light');
         this._updatePanel();
         const snapshot = this._snapshot;
         const memory = snapshot?.memory;
@@ -686,6 +729,8 @@ export default class Matci extends Extension {
     }
     disable() {
         this._enabled = false;
+        if (this._closingTimer) GLib.source_remove(this._closingTimer);
+        this._closingTimer = 0;
         this._stopWorker();
         if (this._sleepSubscription) Gio.DBus.system.signal_unsubscribe(this._sleepSubscription);
         this._sleepSubscription = 0;
