@@ -1,5 +1,17 @@
 # Native GNOME validation log
 
+## 2026-10-20 Pretendard / reveal candidate (v14)
+
+재로그인 후 사용자 Shell은 matci v13 ACTIVE였다. 다음 후보 v14의
+Pretendard 글꼴과 상단 앵커 등장 모션을 격리 GNOME Shell 50.1에서
+합성 앱 목록으로 렌더링했다. 노치 루트와 패널 숫자의 계산 글꼴이 각각
+Pretendard와 Pretendard Bold였고, [20/130/360ms 요청 시점
+캡처](iterations/README.md)에서 시작 형태와 완성 형태를 확인했다.
+현재 사용자 세션의 v14 입력·배율·절전 검수는 아직 남아 있다.
+v14와 Archsport v17을 함께 다음 로그인용으로 스테이징했다. 최종
+Python/Node/ESLint/schema 검사와 공유 도크 일치 검사를 통과했고,
+임시 합성 코드 없는 격리 Shell의 동시 시작에도 `JS ERROR`가 없었다.
+
 2026-10-19, GNOME Shell 50.1, Wayland. Logical monitor reported as 1728×972. The user logged in again; `gnome-extensions info` confirms Archsport v14 and matci v11 are ACTIVE. The next source candidates are v15/v12 and require their own native reload after staging.
 
 ## Verification completed

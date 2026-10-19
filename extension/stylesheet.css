@@ -1,18 +1,20 @@
 .matci-notch {
-    background-color: #111214;
+    font-family: 'Pretendard';
+    background-color: rgba(9, 10, 12, 0.97);
     color: #f5f5f7;
-    border-radius: 24px;
+    border-radius: 0 0 24px 24px;
     padding: 4px 12px;
     spacing: 8px;
-    box-shadow: none;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.07);
 }
-.matci-notch.matci-expanded { padding: 12px 16px; spacing: 8px; }
+.matci-notch StLabel, .matci-notch StButton, .matci-panel-status StLabel { font-family: 'Pretendard'; }
+.matci-notch.matci-expanded { padding: 8px 16px 12px; spacing: 8px; }
 .matci-header, .matci-brand, .matci-header-tools, .matci-controls,
 .matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
 .matci-reason-row, .matci-panel-status { spacing: 8px; }
 .matci-footnote-row { min-height: 18px; spacing: 8px; }
 .matci-footnote-row StIcon { color: #a8abb2; }
-.matci-header { min-height: 34px; }
+.matci-header { min-height: 28px; }
 .matci-brand { spacing: 8px; }
 .matci-title { color: #f5f5f7; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; }
 .matci-state-note, .matci-state-error {
@@ -28,11 +30,13 @@
 .matci-meter-fill { border-radius: 3px; background-color: #b5b7be; }
 .matci-meter-rest { background-color: transparent; }
 .matci-footnote { color: #a8abb2; font-size: 11px; }
-.matci-scroll { min-height: 0px; max-height: 140px; }
-.matci-list { spacing: 8px; padding-top: 4px; }
-.matci-section { min-height: 24px; }
+.matci-scroll { min-height: 0px; max-height: 190px; }
+.matci-scroll StScrollBar { -slider-width: 2px; }
+.matci-scroll StScrollBar StBin#trough { background-color: transparent; }
+.matci-list { spacing: 4px; padding-top: 2px; }
+.matci-section { min-height: 18px; }
 .matci-section-title { color: #f5f5f7; font-size: 12px; font-weight: 700; }
-.matci-app-row { min-height: 38px; padding: 4px; }
+.matci-app-row { min-height: 36px; padding: 2px; }
 .matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 12px; background-color: transparent; }
 .matci-app-select:hover { background-color: rgba(255, 255, 255, 0.07); }
 .matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
@@ -50,41 +54,22 @@
 .matci-empty { color: #b5b7be; font-size: 12px; padding: 12px 0; }
 .matci-status { color: #b5b7be; font-size: 11px; }
 .matci-status-error { color: #ff5f56; font-size: 11px; }
-.matci-controls { min-height: 34px; }
+.matci-controls { min-height: 28px; }
 .matci-button, .matci-icon-button {
     color: #f5f5f7;
     border-radius: 14px;
     background-color: #23252a;
 }
 .matci-button { padding: 7px 12px; font-size: 12px; }
-.matci-icon-button { width: 34px; height: 34px; border-radius: 17px; }
-.matci-button:hover, .matci-icon-button:hover { background-color: #303238; }
-.matci-button:active, .matci-icon-button:active { background-color: #3a3c43; }
+.matci-icon-button { width: 28px; height: 28px; border-radius: 8px; background-color: transparent; }
+.matci-button:hover { background-color: #303238; }
+.matci-icon-button:hover { background-color: rgba(255, 255, 255, 0.07); }
+.matci-button:active { background-color: #3a3c43; }
+.matci-icon-button:active { background-color: rgba(255, 255, 255, 0.12); }
 .matci-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: #838b97; }
-.matci-primary-button { color: #f5f5f7; background-color: #006fe6; font-weight: 700; }
-.matci-primary-button:hover { color: #f5f5f7; background-color: #0066d3; }
+.matci-primary-button { color: #f5f5f7; background-color: #23252a; font-weight: 600; }
+.matci-primary-button:hover { color: #f5f5f7; background-color: #303238; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StIcon { color: #b5b7be; }
 .matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #8ab4ff; border-radius: 8px; }
-
-/* Appearance-aware system surface; exceptional states keep their semantic colors. */
-.matci-notch.matci-light { background-color: #f7f7f9; color: #18191c; }
-.matci-light .matci-title, .matci-light .matci-metric, .matci-light .matci-section-title,
-.matci-light .matci-app-name, .matci-light .matci-review-row { color: #18191c; }
-.matci-light .matci-metric-detail, .matci-light .matci-footnote, .matci-light .matci-app-metric,
-.matci-light .matci-empty, .matci-light .matci-state-note { color: #4b4d54; }
-.matci-light .matci-button, .matci-light .matci-icon-button { color: #18191c; background-color: #e9e9ed; }
-.matci-light .matci-button:hover, .matci-light .matci-icon-button:hover,
-.matci-light .matci-app-select:hover { background-color: rgba(0, 0, 0, 0.06); }
-.matci-light .matci-primary-button { color: #f5f5f7; background-color: #006fe6; }
-.matci-light .matci-primary-button:hover { color: #f5f5f7; background-color: #0066d3; }
-.matci-light .matci-meter-track { background-color: #e9e9ed; }
-.matci-light .matci-meter-fill { background-color: #4b4d54; }
-.matci-light .matci-state-error { color: #b42318; }
-.matci-light .matci-protected { color: #8a4b00; }
-.matci-light .matci-button:focus, .matci-light .matci-icon-button:focus, .matci-light .matci-app-select:focus { box-shadow: inset 0 0 0 2px #0057b8; }
-.matci-light .matci-app-select StIcon { color: #4b4d54; }
-.matci-light .matci-status { color: #4b4d54; }
-.matci-light .matci-status-error { color: #b42318; }
-.matci-light .matci-app-input { color: #62656d; }
