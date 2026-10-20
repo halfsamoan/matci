@@ -14,7 +14,7 @@ import {isActorWithin} from './dockModel.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
-import {protection, appView, appMetrics, healthText, keyOf, interactionAge, takeLines} from './policy.js';
+import {protection, appView, appMetrics, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
 
 const MAX_LINE = 262144;
 // Widgets measured before their first style pass report short heights; style the tree first.
@@ -443,9 +443,11 @@ export default class Matci extends Extension {
                 const processes = (snapshot?.processes ?? []).slice(0, 20);
                 const marks = appMetrics(processes.map(p => ({processes: [p]})));
                 for (const [index, p] of processes.entries()) {
-                    const row = this._label(`${p.comm ?? '시연 프로세스'} · ${marks[index].approximate ? '≤' : ''}${bytes(p.memory_bytes)}`,
+                    const partial = lowAccuracy({...marks[index], kind: p.metric_kind, coverage: p.coverage});
+                    const row = this._label(`${p.comm ?? '시연 프로세스'} · ${bytes(p.memory_bytes)}`,
                         'matci-review-row');
-                    row.accessible_name = `${p.comm ?? '시연 프로세스'}, ${bytes(p.memory_bytes)}, ${metricKind(p.metric_kind)}`;
+                    row.accessible_name = `${p.comm ?? '시연 프로세스'}, ${bytes(p.memory_bytes)}, ${metricKind(p.metric_kind)}` +
+                        `${partial ? ', 부분 측정' : ''}`;
                     list.add_child(row);
                 }
             } else {
@@ -461,7 +463,8 @@ export default class Matci extends Extension {
                 for (const [index, group] of groups.entries()) {
                     const reason = this._protection(group, snapshot);
                     if (reason) this._selected.delete(group.appId);
-                    const {kind, value, approximate} = rowMetrics[index];
+                    const {kind, value, coverage, approximate} = rowMetrics[index];
+                    const partial = lowAccuracy({kind, coverage, approximate});
                     const ages = group.processes.map(p => p.metric_age_ms);
                     const age = ages.length && ages.every(Number.isFinite) ?
                         `${Math.round(Math.max(...ages) / 1000)}초 전 관측` : '관측 시각 미확인';
@@ -473,7 +476,7 @@ export default class Matci extends Extension {
                         x_expand: true, can_focus: !this._actions.busy, reactive: !this._actions.busy,
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
                             `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}, ` +
-                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}`});
+                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}${partial ? ', 부분 측정' : ''}`});
                     select._matciAppId = group.appId;
                     // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
                     select.connect('key-focus-in', () => {
@@ -496,9 +499,8 @@ export default class Matci extends Extension {
                     if (reason) appContent.add_child(new St.Icon({icon_name: 'changes-prevent-symbolic', icon_size: 14}));
                     if (selected) appContent.add_child(new St.Icon({icon_name: 'object-select-symbolic',
                         style_class: 'matci-selected-check', icon_size: 14}));
-                    // RSS beside PSS includes shared memory and reads larger: marked and dimmed.
-                    const metricLabel = approximate ? this._label(`≤${bytes(value)}`, 'matci-app-metric matci-app-metric-approx') :
-                        this._label(bytes(value), 'matci-app-metric');
+                    // The visible value stays plain; accuracy context remains in its accessible name.
+                    const metricLabel = this._label(bytes(value), 'matci-app-metric');
                     metricLabel.x_expand = false;
                     appContent.add_child(metricLabel);
                     select.set_child(appContent);

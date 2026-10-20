@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
-import {protection, sameTargets, interactionAge, takeLines, appMetrics, healthText} from '../extension/policy.js';
+import {protection, sameTargets, interactionAge, takeLines, appMetrics, lowAccuracy, healthText} from '../extension/policy.js';
 
 const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
@@ -181,15 +181,20 @@ test('post-ack fresh sampling respects the real worker 250ms rate limit', async 
     assert.deepEqual(at, [0, 300, 1300]);
 });
 
-test('RSS rows are marked approximate only when PSS rows are shown beside them', () => {
-    const p = (metric_kind, memory_bytes) => ({metric_kind, memory_bytes});
+test('RSS and incomplete rows are identified as partial measurements', () => {
+    const p = (metric_kind, memory_bytes, coverage = 'complete') => ({metric_kind, memory_bytes, coverage});
     const mixed = appMetrics([{processes: [p('pss', 2), p('pss', 3)]}, {processes: [p('rss', 7)]},
         {processes: [p('pss', 1), p('rss', 1)]}, {processes: []}]);
-    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate]),
-        [['pss', 5, false], ['rss', 7, true], [null, null, false], [null, null, false]]);
+    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate, row.coverage]),
+        [['pss', 5, false, 'complete'], ['rss', 7, true, 'complete'], [null, null, false, 'partial'],
+            [null, null, false, 'partial']]);
     assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('rss', 2)]}]).every(row => !row.approximate));
     // A mixed group prints no value, so it cannot make the others look mixed.
     assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('pss', 1), p('rss', 1)]}]).every(row => !row.approximate));
+    assert.equal(lowAccuracy(mixed[0]), false);
+    assert.equal(lowAccuracy(mixed[1]), true);
+    assert.equal(lowAccuracy({...mixed[0], approximate: true}), true);
+    assert.equal(lowAccuracy({...mixed[0], coverage: 'partial'}), true);
 });
 
 test('partial health never names a cause; the panel only reports a visibly missing value', () => {
@@ -203,7 +208,6 @@ test('partial health never names a cause; the panel only reports a visibly missi
     const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
     assert.match(source, /missingValues = rowMetrics\.some\(row => row\.value === null\)/);
     assert.match(source, /snapshot\?\.health === 'partial' && missingValues/);
-    // RSS beside PSS is an upper bound, and the content height is never clamped below its children.
-    assert.match(source, /`≤\$\{bytes\(value\)\}`/);
+    assert.doesNotMatch(source, /≤/);
     assert.doesNotMatch(source, /Math\.min\(326/);
 });
