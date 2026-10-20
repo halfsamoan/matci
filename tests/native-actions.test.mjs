@@ -17,6 +17,10 @@ test('new enable and idle collapse clear stale action status', () => {
     assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._receivedAt = 0;\n\s+this\._actionStatus = null;/);
     assert.match(extensionSource, /if \(!this\._actions\?\.busy\) this\._actionStatus = null;/);
 });
+test('automatic suggestion timeout stays open for a selected app', () => {
+    assert.match(extensionSource, /!this\._actions\.review && !this\._actions\.busy && !this\._selected\.size/);
+    assert.match(extensionSource, /select\.connect\('clicked', \(\) => \{\n\s+if \(reason\) return;\n\s+if \(this\._eventTimer\) \{ GLib\.source_remove\(this\._eventTimer\); this\._eventTimer = 0; \}/);
+});
 test('input-age hints handle short uint32 wrap and reject unknown/backward/old baselines', () => {
     assert.equal(interactionAge(1200, 2200, 1000), 1000);
     assert.equal(interactionAge(0xfffffff0, 20, 0xffffffe0), 36);

@@ -479,6 +479,7 @@ export default class Matci extends Extension {
                     select.set_child(appContent);
                     select.connect('clicked', () => {
                         if (reason) return;
+                        if (this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
                         if (this._selected.has(group.appId)) this._selected.delete(group.appId); else this._selected.add(group.appId);
                         this._render();
                     });
@@ -620,7 +621,9 @@ export default class Matci extends Extension {
             this._message = '메모리 사용이 30초 이상 높습니다. 확인을 제안합니다. 자동으로 앱을 닫지 않습니다.';
             this._expand(false); // Priority 30 cannot steal a manual review or keyboard focus.
             if (this._expanded) this._eventTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 6000, () => {
-                this._eventTimer = 0; if (!this._actions.review && !this._actions.busy) this._collapse(); return GLib.SOURCE_REMOVE;
+                this._eventTimer = 0;
+                if (!this._actions.review && !this._actions.busy && !this._selected.size) this._collapse();
+                return GLib.SOURCE_REMOVE;
             });
         }
     }
