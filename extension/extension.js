@@ -46,6 +46,7 @@ export default class Matci extends Extension {
         this._ownerUid = new Gio.Credentials().get_unix_user();
         this._snapshot = null;
         this._receivedAt = 0;
+        this._actionStatus = null;
         this._expanded = false;
         this._scrollView = null;
         this._rowButtons = new Map();
@@ -200,6 +201,7 @@ export default class Matci extends Extension {
     _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
+        if (!this._actions?.busy) this._actionStatus = null;
         if (!keepReview) this._selected.clear();
         this._render();
         if (restoreFocus) this._indicator.grab_key_focus();
