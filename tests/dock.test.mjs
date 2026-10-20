@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {DOCK_PROTOCOL, buttonNumber, layoutNotches, canClaim, isActorWithin, isPointWithinActor,
     classifyOutsideSurface, dispatchOutsideDismiss} from '../extension/dockModel.js';
 
@@ -83,4 +84,17 @@ test('only the active notch trigger is exempt from outside dismissal', () => {
     assert.deepEqual(otherClick, {insideDock: false, insideOwnerTrigger: false});
     assert.equal(dispatchOutsideDismiss({eventType: 4, buttonPressType: 4, button: 1, active: true,
         expanded: true}, () => {}, otherClick), true);
+});
+
+test('blur inset and hit-region margins survive St style resets', async () => {
+    const {DESIGN} = await import('../extension/designTokens.js');
+    const source = readFileSync(new URL('../extension/notchSurface.js', import.meta.url), 'utf8');
+    // St re-applies CSS margins on every style change, so margin_* constructor properties reset to 0
+    // and the BACKGROUND blur then paints the whole surface rectangle past the rounded corners.
+    assert.doesNotMatch(source, /margin_(left|right|top|bottom)\s*:/);
+    assert.match(source, /style: `margin: /);
+    // Hit-region margins are re-applied after style changes for the same reason.
+    assert.match(source, /connect\('style-changed', updateHitRegions\)/);
+    // The Cairo Bézier corner reaches 0.3125 × radius inward at its diagonal midpoint.
+    assert.ok(DESIGN.material.blurInset >= 0.3125 * DESIGN.radius.surface);
 });

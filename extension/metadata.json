@@ -4,5 +4,5 @@
   "description": "Panel-first system memory overview and explicit normal window-close requests. Ubuntu runtime validation required.",
   "shell-version": ["46", "50"],
   "settings-schema": "org.gnome.shell.extensions.matci",
-  "version": 15
+  "version": 16
 }
