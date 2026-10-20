@@ -72,40 +72,18 @@ def running_version(uuid=UUID, *, command=None):
             state.group(1) if state else None)
 
 
-def enable_extension(uuid=UUID, *, command=None):
-    executable = command or shutil.which('gnome-extensions')
-    if not executable:
-        return False
+def replace_direct(staging, target, parked, parked_destination):
+    """Swap a direct install without racing GNOME's disable/enable lifecycle."""
+    if target.exists():
+        target.rename(parked)
     try:
-        result = subprocess.run([executable, 'enable', uuid], text=True, capture_output=True,
-                                timeout=5, check=False, env={**os.environ, 'LC_ALL': 'C'})
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
-
-
-def replace_direct(staging, target, parked, parked_destination, was_active):
-    """Swap a direct install with rollback and restore the prior enabled state on every exit."""
-    try:
-        if target.exists():
-            disabled = subprocess.run(['gnome-extensions', 'disable', UUID], check=False, timeout=5)
-            if disabled.returncode != 0:
-                raise SystemExit('활성 확장을 비활성화하지 못했습니다. 기존 설치를 보존했습니다.')
-            target.rename(parked)
-        try:
-            staging.rename(target)
-        except OSError:
-            if parked and parked.exists() and not target.exists():
-                parked.rename(target)
-            raise
-        if parked:
-            parked.rename(parked_destination)
-    finally:
-        if was_active:
-            if enable_extension():
-                print('이전 확장 활성 상태를 복원했습니다.')
-            else:
-                print('확장을 다시 켜지 못했습니다. 필요하면 `gnome-extensions enable matci@local`을 실행하세요.')
+        staging.rename(target)
+    except OSError:
+        if parked and parked.exists() and not target.exists():
+            parked.rename(target)
+        raise
+    if parked:
+        parked.rename(parked_destination)
 
 
 def write_pending_relogin(state_dir, installed, running):
@@ -175,11 +153,8 @@ def main():
     update_target = updates_root / UUID
     if target.is_symlink() or target.resolve().parent != parent.resolve():
         raise SystemExit('예상하지 않은 설치 경로입니다. 기존 파일을 보존했습니다.')
-    was_active = False
     if target.exists():
         verify_identity(target)
-        _, previous_state = running_version()
-        was_active = previous_state == 'ACTIVE'
         if not (args.upgrade or args.rollback or args.direct):
             raise SystemExit('기존 설치를 보존했습니다. 업데이트는 --upgrade를 사용하세요.')
     backups = Path(os.environ.get('XDG_STATE_HOME', Path.home() / '.local/state')) / 'matci/backups'
@@ -226,7 +201,7 @@ def main():
             # Keep an in-place previous checkout too, so a failed rename is recoverable.
             parked = parent / f'.matci-previous-{backup.name if backup else "rollback"}'
         parked_destination = backups / f'parked-{backup.name if backup else "rollback"}'
-        replace_direct(staging, target, parked, parked_destination, was_active)
+        replace_direct(staging, target, parked, parked_destination)
         destination = target
         if args.direct or args.rollback or (args.upgrade and not update_support):
             print('직접 교체했습니다. GNOME이 이전 모듈을 캐시했을 수 있습니다. 로그아웃·로그인하세요.')
