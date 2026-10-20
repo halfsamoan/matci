@@ -14,12 +14,23 @@ test('re-enable keeps worker generations monotonic', () => {
     assert.doesNotMatch(extensionSource, /this\._generation = 0;/);
 });
 test('new enable and idle collapse clear stale action status', () => {
-    assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._receivedAt = 0;\n\s+this\._actionStatus = null;/);
+    assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._panelSnapshot = null;[\s\S]*?this\._receivedAt = 0;[\s\S]*?this\._actionStatus = null;/);
     assert.match(extensionSource, /if \(!this\._actions\?\.busy\) this\._actionStatus = null;/);
+});
+test('expanded matci requests full detail and light snapshots never replace app-action data', () => {
+    assert.match(extensionSource, /this\._setDetail\(true\)/);
+    assert.match(extensionSource, /if \(!this\._actions\?\.review && !this\._actions\?\.busy\) this\._setDetail\(false\)/);
+    assert.match(extensionSource, /this\._request\('set_detail', \{detail: requested\}\)/);
+    assert.match(extensionSource, /const detailPaused = message\.warnings\?\.includes\('PROCESS_DETAIL_PAUSED'\)/);
+    assert.match(extensionSource, /this\._panelSnapshot = message;\n\s+if \(!detailPaused\) this\._snapshot = message;/);
+    assert.match(extensionSource, /this\._detailCommandSupported = false/);
+    assert.match(extensionSource, /COMMAND_NOT_SUPPORTED/);
+    assert.match(extensionSource, /const detailReady = Boolean\(snapshot\) && \(demo \|\| \(!this\._detailPaused && !this\._detailLoading\)\)/);
+    assert.match(extensionSource, /if \(firstSnapshot\) this\._setDetail\(this\._detailDesired\)/);
 });
 test('automatic suggestion timeout stays open for a selected app', () => {
     assert.match(extensionSource, /!this\._actions\.review && !this\._actions\.busy && !this\._selected\.size/);
-    assert.match(extensionSource, /select\.connect\('clicked', \(\) => \{\n\s+if \(reason\) return;\n\s+if \(this\._eventTimer\) \{ GLib\.source_remove\(this\._eventTimer\); this\._eventTimer = 0; \}/);
+    assert.match(extensionSource, /select\.connect\('clicked', \(\) => \{\n\s+if \(reason \|\| !detailReady \|\| this\._detailLoading \|\| this\._detailPaused\) return;\n\s+if \(this\._eventTimer\) \{ GLib\.source_remove\(this\._eventTimer\); this\._eventTimer = 0; \}/);
 });
 test('closing releases notch focus back to the prior application window', () => {
     assert.match(extensionSource, /import \{isActorWithin\} from '\.\/dockModel\.js';/);
