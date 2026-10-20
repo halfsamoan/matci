@@ -1,6 +1,6 @@
 # Archsport와 matci 표면 공존
 
-Archsport와 matci는 독립 확장이다. 각 저장소의 `extension/notchDock.js`, `extension/dockModel.js`, `extension/notchSurface.js`는 byte 동일해야 하며 `tools/dev.py --check-only`가 이를 검사한다. `DOCK_PROTOCOL`을 올릴 때 두 저장소를 같은 변경에서 갱신한다. 별도 서비스나 daemon은 없다.
+Archsport와 matci는 독립 확장이다. 각 저장소의 `docs/design/design-tokens.json`, `extension/designTokens.js`, `extension/notchDock.js`, `extension/dockModel.js`, `extension/notchSurface.js`는 byte 동일해야 한다. `tools/check_shared_design.py`와 `tools/dev.py --check-only`가 이를 검사한다. `DOCK_PROTOCOL`을 올릴 때 두 저장소를 같은 변경에서 갱신한다. 별도 서비스나 daemon은 없다.
 
 대기 상태에서 matci는 GNOME 패널의 RAM 아이콘과 사용률만 표시한다. 사용자가 패널 항목을 누르면 상세 overlay가 열리고, 다시 누르거나 접기 버튼을 누르면 닫힌다. Archsport는 경기 상태가 있을 때만 패널 아래 노치를 표시한다. 두 확장 모두 `affectsStruts:false`를 사용하므로 작업영역을 예약하지 않고 기존 창 위치를 바꾸지 않는다. 패널과 이어지는 오목한 귀와 아래 둥근 모서리 바깥은 아래 앱으로 클릭을 전달하고, 노치 표면과 조작 버튼은 입력을 받는다.
 

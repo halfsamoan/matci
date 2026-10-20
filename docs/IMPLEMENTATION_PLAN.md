@@ -56,12 +56,12 @@ Shell의 앱 매핑/분류는 `record_app_view`로 해당 sample_id에 연결해
 
 ## 5. 노치와 동시 사용
 
-GNOME에서 Archsport는 경기 상태일 때만 compact 280×46 및 expanded overlay를 사용한다. matci idle에는 compact surface가 없고 패널 RAM 항목만 보인다. 두 확장 overlay는 열림 230ms·닫힘 165ms·크기 280ms의 EASE_OUT_CUBIC, 패널 아래·`affectsStruts:false`를 따른다. 웹 수치는 합성 프리뷰에 한정한다. 상세 발췌와 출처 해시는 `replica/design/archsport-motion.json`에 있다.
+GNOME에서 Archsport는 경기 상태일 때만 compact 및 expanded overlay를 사용한다. matci idle에는 compact surface가 없고 패널 RAM 항목만 보인다. 두 확장의 geometry·motion은 `docs/design/design-tokens.json`과 각 `extension/metadata.json`을 따른다. 패널 아래에 배치하고 `affectsStruts:false`를 사용한다. 웹 수치는 합성 프리뷰에 한정한다. 상세 발췌와 출처 해시는 `replica/design/archsport-motion.json`에 있다.
 
 초기 제안: Archsport를 함께 사용하는 사용자를 위한 기본 슬롯 정책. **현재 동작 명세가 아니다.** 실제 공용 dock 계약은 [`DUAL_NOTCH.md`](DUAL_NOTCH.md)와 최신 인계 문서를 따른다.
 
 - 중앙은 Archsport 우선. matci 단독이면 중앙을 사용한다.
-- Archsport 활성 시 matci는 중앙 왼쪽, 패널 아래 같은 Y에 배치한다. **두 actor의 실제 allocation과 좌우 12 logical px 간격이 확보될 때만** 보조 노치를 보인다.
+- Archsport 활성 시 matci는 중앙 왼쪽, 패널 아래 같은 Y에 배치한다. **두 actor의 실제 allocation과 slab 귀 간격 `2 × earMax`(`docs/design/design-tokens.json`)이 확보될 때만** 보조 노치를 보인다.
 - expanded 상태가 겹치거나 모니터 폭이 부족하면 matci를 패널 아이콘으로 축소하고, 클릭 시 검토 목록을 연다. 열린 상대 노치 위에 그리지 않는다. 상대 actor 발견 실패/버전 불일치에도 패널 아이콘 fallback을 사용한다.
 - 자동 이벤트는 포커스를 빼앗지 않는다. 상세창을 사용자가 연 경우만 focus와 Escape 복귀를 관리한다.
 - 초기 구현은 알려진 Archsport 확장 UUID/actor 상태를 읽는 호환 어댑터다. 메모리 worker와 연관시키지 않는다. 감지와 배치가 실기에서 안정적이지 않으면 중앙 동시 표시를 금지한 상태로 출시한다.

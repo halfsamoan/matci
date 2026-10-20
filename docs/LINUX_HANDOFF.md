@@ -32,7 +32,7 @@
 
 Windows/WSL 단위 테스트, Node geometry·보호·닫기 컨트롤러, 실제 JS→Python Worker→임시 SQLite 통합, WSL strict schema compile, WSL 실제 `/proc` read-only smoke, Windows 브라우저390/1440 검수를 실행했다. 최신 수와 결과는 `replica/verification.md`를 따른다.
 
-**실제 GNOME46/50 enable/disable·Meta.Window 정상 닫기·미저장 취소·절전·배율·Archsport 동시 표시·성능은 미검증이다.** WSL 수집 성공은 ASUS Ubuntu GUI 검수 통과가 아니다. metadata46/50도 검수 대상 선언이다.
+**실제 GNOME enable/disable·Meta.Window 정상 닫기·미저장 취소·절전·배율·Archsport 동시 표시·성능은 미검증이다.** WSL 수집 성공은 ASUS Ubuntu GUI 검수 통과가 아니다. 지원 Shell 범위는 `extension/metadata.json`의 `shell-version`을 따르고, 화면 geometry와 모션 값은 `docs/design/design-tokens.json`을 따른다.
 
 ## Linux 첫 실행
 
@@ -56,7 +56,7 @@ python3 tools/install_extension.py
 
 위 설치 절차는 사용자 세션에 실제 확장을 배치할 때만 쓴다. 반복 개발에는 사용하지 않는다. 설치기는 기존 확장을 교체하며, 현재 Shell의 확장 코드를 즉시 다시 읽는 방법으로 간주하면 안 된다.
 
-로그아웃·로그인 후 `gnome-extensions enable matci@local`, 설정은 `gnome-extensions prefs matci@local`. 업데이트는 `--upgrade`, 복구는 `--rollback`. matci UUID만 교체하며 backup과 실패 staging을 보존한다. systemd 서비스는 만들지 않는다.
+로그아웃·로그인 후 `gnome-extensions enable matci@local`, 설정은 `gnome-extensions prefs matci@local`. 업데이트는 `--upgrade`, 복구는 `--rollback`. matci UUID만 교체한다. 준비 단계 실패 시 임시 staging은 제거하고, extension 백업은 최신 5개를 유지한다. `parked-*` 복사본은 남긴다. systemd 서비스는 만들지 않는다.
 
 Archsport의 경기 표면과 위치를 조정할 때 shared dock을 사용한다. 대기 중 matci compact notch를 표시하지 않는다. 실기기에서 두 확장 동시 표시와 충돌 처리는 별도로 검수한다.
 
