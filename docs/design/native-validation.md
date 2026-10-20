@@ -10,7 +10,8 @@ ACTIVE로 띄웠고, 임시 개발 복사본의 합성 기본·선택·검토 �
 `St-CRITICAL ... not in the stage` 경고도 해소했다.
 
 가상 모니터의 hit probe에서 투명한 상단 모서리는 배경 actor, 목·어깨는
-노치 hit actor로 pick됐다. 실제 사용자 Shell은 아직 v13 ACTIVE이며
+노치 hit actor로 pick됐다. 새 v18/v15를 다음 로그인용으로 함께 스테이징했고,
+실제 사용자 Shell은 아직 matci v14 ACTIVE이며
 실제 입력·배율·5분 유휴 성능 검수는 남았다.
 
 ## 2026-10-20 Pretendard / reveal candidate (v14)
