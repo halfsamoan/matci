@@ -65,7 +65,6 @@ class Worker:
     def sample(self, request_id=None):
         snapshot = self.collector.sample(self.session_id)
         require(snapshot['mode'] == self.mode, 'COLLECTOR_MODE_MISMATCH')
-        self.store.save_sample(snapshot)
         previous = self.current_sample
         if previous is not None:
             # Only the current sample's processes/view are ever read; receipts need its scalars.

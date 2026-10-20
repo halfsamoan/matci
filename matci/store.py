@@ -119,20 +119,19 @@ class Store:
             self.connection.execute("UPDATE action_receipts SET status='partial',updated_at=? WHERE owner_uid=? AND status IN ('requested','observing')",
                                     (now, self.uid))
 
-    def save_sample(self, sample):
+    def ensure_sample(self, sample):
         m, p, now = sample['memory'], sample['pressure'], sample['sampled_at']
-        with self.connection:
-            self.connection.execute('''INSERT INTO memory_samples
+        self.connection.execute('''INSERT OR IGNORE INTO memory_samples
                 (id,owner_uid,created_at,updated_at,boot_id,monotonic_ms,mode,health,total_bytes,available_bytes,psi_some_avg10,psi_full_avg10)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (sample['sample_id'], self.uid, now, now, sample['boot_id'], sample['monotonic_ms'],
-                 sample['mode'], sample['health'], m['total_bytes'], m['available_bytes'],
-                 p['some_avg10'], p['full_avg10']))
-        self.prune()
+            (sample['sample_id'], self.uid, now, now, sample['boot_id'], sample['monotonic_ms'],
+             sample['mode'], sample['health'], m['total_bytes'], m['available_bytes'],
+             p['some_avg10'], p['full_avg10']))
 
     def save_apps(self, sample, apps, protected):
         now = utc_now()
         with self.connection:
+            self.ensure_sample(sample)
             owner = self.connection.execute('SELECT owner_uid FROM memory_samples WHERE id=? AND owner_uid=?',
                                             (sample['sample_id'], self.uid)).fetchone()
             if owner is None:
@@ -152,6 +151,7 @@ class Store:
                     VALUES(?,?,?,?,?,?,?,?,?,?,?)''',
                     (new_id(), sample['sample_id'], self.uid, now, now, app['app_id'], app['metric_kind'],
                      app['memory_bytes'], app['coverage'], app['classification'], app['reason_code']))
+        self.prune()
 
     def receipt(self, action_id):
         receipt = self.connection.execute('SELECT * FROM action_receipts WHERE id=? AND owner_uid=?',
@@ -170,6 +170,9 @@ class Store:
         after_value = after['memory']['available_bytes'] if after else None
         delta = after_value - before_value if after_value is not None and before_value is not None else None
         with self.connection:
+            self.ensure_sample(sample)
+            if after is not None:
+                self.ensure_sample(after)
             if existing is None:
                 self.connection.execute('''INSERT INTO action_receipts
                     (id,owner_uid,created_at,updated_at,sample_id,mode,status,available_before,available_after,observed_delta)
@@ -185,6 +188,7 @@ class Store:
                     ON CONFLICT(action_id,app_id) DO UPDATE SET result=excluded.result,reason_code=excluded.reason_code,
                     updated_at=excluded.updated_at WHERE action_items.owner_uid=excluded.owner_uid''',
                     (new_id(), action_id, self.uid, now, now, item['app_id'], item['result'], item['reason_code'], action_id, self.uid))
+        self.prune()
         self.write_summary()
         return self.receipt(action_id)
 

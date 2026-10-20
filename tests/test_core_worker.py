@@ -64,6 +64,47 @@ class WorkerContractTests(unittest.TestCase):
         message.update(fields)
         return message
 
+    def test_periodic_samples_do_not_write_store(self):
+        before = self.store.connection.execute('SELECT count(*) FROM memory_samples').fetchone()[0]
+        for _ in range(5):
+            self.worker.sample()
+        after = self.store.connection.execute('SELECT count(*) FROM memory_samples').fetchone()[0]
+        self.assertEqual(after, before)
+
+    def test_record_app_view_persists_referenced_sample(self):
+        sample_id = self.snapshot['sample_id']
+        self.assertEqual(self.store.connection.execute('SELECT count(*) FROM memory_samples').fetchone()[0], 0)
+        self.assertEqual(self.send(self.view())['type'], 'ack')
+        row = self.store.connection.execute('SELECT id FROM memory_samples WHERE id=? AND owner_uid=?',
+                                            (sample_id, self.store.uid)).fetchone()
+        self.assertEqual(row['id'], sample_id)
+
+    def test_record_receipt_persists_before_and_after_samples(self):
+        before_id = self.snapshot['sample_id']
+        self.send(self.view())
+        requested = self.receipt()
+        self.send(requested)
+        self.collector.now += 1000
+        self.collector.available = 9000
+        after = self.worker.sample()
+        self.assertIsNone(self.store.connection.execute('SELECT id FROM memory_samples WHERE id=?',
+                                                       (after['sample_id'],)).fetchone())
+        completed = self.receipt(action_id=requested['action_id'], status='completed',
+                                 after_sample_id=after['sample_id'],
+                                 items=[{'app_id': 'browser.desktop', 'result': 'window_closed',
+                                         'reason_code': 'WINDOWS_CLOSED'}])
+        self.assertEqual(self.send(completed)['status'], 'completed')
+        rows = self.store.connection.execute('SELECT id FROM memory_samples ORDER BY id').fetchall()
+        self.assertEqual({row['id'] for row in rows}, {before_id, after['sample_id']})
+
+    def test_ensure_sample_idempotent(self):
+        with self.store.connection:
+            self.store.ensure_sample(self.snapshot)
+            self.store.ensure_sample(self.snapshot)
+        count = self.store.connection.execute('SELECT count(*) FROM memory_samples WHERE id=?',
+                                              (self.snapshot['sample_id'],)).fetchone()[0]
+        self.assertEqual(count, 1)
+
     def test_authoritative_app_bytes_and_builtin_mirror(self):
         ack = self.send(self.view())
         self.assertEqual(ack['type'], 'ack')
