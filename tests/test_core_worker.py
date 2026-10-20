@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from matci.demo import DemoCollector, load_replay
+from matci.__main__ import periodic_sample
 from matci.model import MAX_LINE_BYTES, new_id, utc_now
 from matci.store import Store, WorkerLocked, current_uid
 from matci.worker import Worker, decode_line, ProtocolError
@@ -321,6 +322,27 @@ class WorkerContractTests(unittest.TestCase):
 
 
 class DemoCliTests(unittest.TestCase):
+    def test_periodic_sample_error_is_emitted_and_later_poll_continues(self):
+        class FlakyWorker:
+            def __init__(self):
+                self.calls = 0
+
+            def sample(self):
+                self.calls += 1
+                if self.calls == 1:
+                    raise sqlite3.OperationalError('fixture failure')
+                return {'schema_version': 1, 'type': 'snapshot', 'sample_id': 'recovered'}
+
+            def error(self, code):
+                return {'schema_version': 1, 'type': 'error', 'session_id': 'fixture', 'code': code}
+
+        worker = FlakyWorker()
+        failed = periodic_sample(worker)
+        recovered = periodic_sample(worker)
+        self.assertEqual(failed['code'], 'STORAGE_OR_OBSERVATION_ERROR')
+        self.assertEqual(recovered['type'], 'snapshot')
+        self.assertEqual(worker.calls, 2)
+
     def test_demo_is_explicit_synthetic_and_actions_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             store = Store(directory)

@@ -49,6 +49,14 @@ def read_commands(stream, messages):
         messages.put(None)
 
 
+def periodic_sample(worker):
+    try:
+        return worker.sample()
+    except (OSError, ValueError, OverflowError, sqlite3.Error):
+        # The Shell already accepts this generic observation/storage error code.
+        return worker.error('STORAGE_OR_OBSERVATION_ERROR')
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='matci local memory observer (no app control)')
     group = parser.add_mutually_exclusive_group()
@@ -94,10 +102,10 @@ def main(argv=None):
                     break
                 emit(worker.error('MESSAGE_TOO_LARGE') if line is False else worker.handle_line(line))
                 if time.monotonic() >= next_sample:
-                    emit(worker.sample())
+                    emit(periodic_sample(worker))
                     next_sample = time.monotonic() + args.interval
             except queue.Empty:
-                emit(worker.sample())
+                emit(periodic_sample(worker))
                 next_sample = time.monotonic() + args.interval
     except KeyboardInterrupt:
         return 0
