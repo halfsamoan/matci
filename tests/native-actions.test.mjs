@@ -26,8 +26,16 @@ test('closing releases notch focus back to the prior application window', () => 
     assert.match(extensionSource, /_returnWindow = global\.display\.get_focus_window\(\)/);
     assert.match(extensionSource, /_releaseFocus\(\) \{[\s\S]*?global\.stage\.set_key_focus\(null\);[\s\S]*?win\.focus\(global\.get_current_time\(\)\)/);
     assert.match(extensionSource, /if \(manual && this\._dock\.state\.visible\) this\._root\.grab_key_focus\(\)/);
+    assert.match(extensionSource, /if \(restoreFocus\) this\._releaseFocus\(\)/);
     assert.doesNotMatch(extensionSource, /if \(restoreFocus\) this\._indicator\.grab_key_focus\(\)/);
     assert.match(extensionSource, /toggle\(\);\n\s+if \(!this\._expanded\) this\._indicator\.grab_key_focus\(\);/);
+});
+test('overview and hidden fullscreen collapse expanded matci while preserving review state', () => {
+    assert.ok(extensionSource.includes('if (this._expanded) this._collapse(false, {keepReview: true});'));
+    assert.ok(extensionSource.includes("this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen && this._expanded"));
+    assert.match(extensionSource, /_onOverviewShowing\(\)/);
+    assert.match(extensionSource, /_onFullscreenChanged\(\)/);
+    assert.match(extensionSource, /Main\.overview, 'showing', \(\) => this\._onOverviewShowing\(\)/);
 });
 test('input-age hints handle short uint32 wrap and reject unknown/backward/old baselines', () => {
     assert.equal(interactionAge(1200, 2200, 1000), 1000);
@@ -121,7 +129,7 @@ test('a yielded review older than 60 seconds is rejected before close', async ()
     assert.equal(f.controller.review, null);
 });
 test('a dock yield preserves the native review and selected app IDs', () => {
-    assert.ok(extensionSource.includes('onYield: () => this._collapse({keepReview: true})'));
+    assert.ok(extensionSource.includes('onYield: () => this._collapse(false, {keepReview: true})'));
     assert.ok(extensionSource.includes('if (!keepReview && !this._actions?.busy) this._actions?.cancel()'));
     assert.ok(extensionSource.includes('if (!keepReview) this._selected.clear()'));
     assert.ok(extensionSource.includes('this._actionStatus = \'error\';'));

@@ -68,7 +68,7 @@ export default class Matci extends Extension {
             accessible_name: 'matci 메모리 노치'});
         this._root.connect('key-press-event', (_actor, event) => {
             if (event.get_key_symbol() === Clutter.KEY_Escape) {
-                this._collapse(); return Clutter.EVENT_STOP;
+                this._collapse(true); return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -91,7 +91,7 @@ export default class Matci extends Extension {
         panelStatus.add_child(this._indicatorLabel);
         this._indicator.add_child(panelStatus);
         const toggle = () => {
-            if (this._expanded) this._collapse(); else this._expand(true);
+            if (this._expanded) this._collapse(true); else this._expand(true);
             return Clutter.EVENT_STOP;
         };
         this._connect(this._indicator, 'button-press-event', toggle);
@@ -108,8 +108,8 @@ export default class Matci extends Extension {
         this._dock = new DockParticipant({id: this.uuid, actor: this._surface, monitor: () => this._monitor(), order: 1,
             triggerActor: () => this._indicator,
             onShellShutdown: () => this._beginShellShutdown(),
-            onOutside: () => this._collapse({keepReview: true}),
-            onYield: () => this._collapse({keepReview: true})});
+            onOutside: () => this._collapse(false, {keepReview: true}),
+            onYield: () => this._collapse(false, {keepReview: true})});
         // Global shortcut (numpad Delete/Decimal by default). The Shell grab keeps the key from apps.
         Main.wm.addKeybinding('matci-toggle-shortcut', this._settings, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
             Shell.ActionMode.NORMAL, toggle);
@@ -126,10 +126,10 @@ export default class Matci extends Extension {
         this._connect(this._indicator, 'destroy', () => this._beginShellShutdown());
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
         this._connect(Main.panel, 'notify::height', () => this._visibility());
-        this._connect(Main.overview, 'showing', () => this._visibility());
+        this._connect(Main.overview, 'showing', () => this._onOverviewShowing());
         this._connect(Main.overview, 'hidden', () => this._visibility());
         this._connect(Main.sessionMode, 'updated', () => this._visibility());
-        this._connect(global.display, 'in-fullscreen-changed', () => this._visibility());
+        this._connect(global.display, 'in-fullscreen-changed', () => this._onFullscreenChanged());
         this._connect(this._settings, 'changed', (_s, key) => {
             this._actions.cancel(); this._selected.clear();
             this._suggestStart = null;
@@ -198,6 +198,15 @@ export default class Matci extends Extension {
         // The coordinator owns visibility and placement, including collision fallback.
         this._dock.update({width, height, visible, expanded: this._expanded});
     }
+    _onOverviewShowing() {
+        if (this._expanded) this._collapse(false, {keepReview: true});
+        else this._visibility();
+    }
+    _onFullscreenChanged() {
+        if (this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen && this._expanded)
+            this._collapse(false, {keepReview: true});
+        else this._visibility();
+    }
     _expand(manual = false) {
         if (!this._dock.claim(manual ? 100 : 30)) return;
         if (manual && this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
@@ -214,13 +223,13 @@ export default class Matci extends Extension {
         if (win && !win.minimized && win.get_workspace?.() === global.workspace_manager.get_active_workspace())
             win.focus(global.get_current_time());
     }
-    _collapse({keepReview = false} = {}) {
+    _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
         if (!this._actions?.busy) this._actionStatus = null;
         if (!keepReview) this._selected.clear();
         this._render();
-        this._releaseFocus();
+        if (restoreFocus) this._releaseFocus();
     }
     _label(text, style = 'matci-caption') {
         const label = new St.Label({text: String(text), style_class: style, x_expand: true});
@@ -383,7 +392,7 @@ export default class Matci extends Extension {
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
             tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this._openPreferences(), true, 'settings'));
-            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(), true, 'collapse'));
+            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true), true, 'collapse'));
             header.add_child(tools);
             this._root.add_child(header);
 
