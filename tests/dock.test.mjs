@@ -98,3 +98,11 @@ test('blur inset and hit-region margins survive St style resets', async () => {
     // The Cairo Bézier corner reaches 0.3125 × radius inward at its diagonal midpoint.
     assert.ok(DESIGN.material.blurInset >= 0.3125 * DESIGN.radius.surface);
 });
+
+test('numpad toggle shortcut is bound on enable and released on disable', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    const schema = readFileSync(new URL('../extension/schemas/org.gnome.shell.extensions.matci.gschema.xml', import.meta.url), 'utf8');
+    assert.match(source, /addKeybinding\('matci-toggle-shortcut'/);
+    assert.match(source, /disable\(\) \{\n\s+this\._enabled = false;\n\s+Main\.wm\.removeKeybinding\('matci-toggle-shortcut'\);/);
+    assert.ok(schema.includes(`<key name="matci-toggle-shortcut" type="as"><default>['KP_Delete', 'KP_Decimal']</default>`));
+});

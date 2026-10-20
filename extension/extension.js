@@ -1,6 +1,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -91,6 +92,9 @@ export default class Matci extends Extension {
             onShellShutdown: () => this._beginShellShutdown(),
             onOutside: () => this._collapse(false, {keepReview: true}),
             onYield: () => this._collapse(false, {keepReview: true})});
+        // Global shortcut (numpad Delete/Decimal by default). The Shell grab keeps the key from apps.
+        Main.wm.addKeybinding('matci-toggle-shortcut', this._settings, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+            Shell.ActionMode.NORMAL, toggle);
         this._actions = new CloseController({snapshot: () => this._snapshot,
             uuid: () => GLib.uuid_string_random(), now: () => this._now(),
             protection: (g, s) => this._protection(g, s), groups: s => this._groups(s),
@@ -740,6 +744,7 @@ export default class Matci extends Extension {
     }
     disable() {
         this._enabled = false;
+        Main.wm.removeKeybinding('matci-toggle-shortcut');
         if (this._closingTimer) GLib.source_remove(this._closingTimer);
         if (this._scrollTimer) GLib.source_remove(this._scrollTimer);
         this._closingTimer = this._scrollTimer = 0;

@@ -8,5 +8,6 @@
     <key name="auto-suggestions" type="b"><default>false</default><summary>Suggest manual review; never auto close</summary></key>
     <key name="threshold" type="i"><range min="50" max="99"/><default>85</default><summary>Used memory suggestion percentage</summary></key>
     <key name="protected-app-ids" type="as"><default>[]</default><summary>User protected desktop IDs</summary></key>
+    <key name="matci-toggle-shortcut" type="as"><default>['KP_Delete', 'KP_Decimal']</default><summary>Shortcut that opens or closes the notch</summary></key>
   </schema>
 </schemalist>

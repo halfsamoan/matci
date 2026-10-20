@@ -46,6 +46,8 @@ gnome-extensions prefs matci@local
 
 matci는 평소 상단 패널의 RAM 아이콘과 사용률만 보인다. 패널 항목을 누르면 상세 오버레이가 열리고, 다시 누르거나 접기 버튼을 누르면 닫힌다. 오버레이는 작업 공간을 예약하지 않아 기존 창 위치를 바꾸지 않는다.
 
+넘버패드 `Del`(NumLock과 무관)로도 오버레이를 열고 닫는다. Shell이 이 키를 가로채므로 일반 데스크톱에서는 앱에 전달되지 않는다. 바꾸려면 `gsettings --schemadir ~/.local/share/gnome-shell/extensions/matci@local/schemas set org.gnome.shell.extensions.matci matci-toggle-shortcut "['<Super>m']"`처럼 지정한다.
+
 ```bash
 # 확장을 끈 상태에서 CLI를 분리 검사한다(기본 state에는 worker 1개만 허용).
 gnome-extensions disable matci@local
