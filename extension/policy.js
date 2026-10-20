@@ -44,6 +44,27 @@ export function protection(group, snapshot, ownerUid, protectedIds = [], age = 0
     return null;
 }
 
+// One value per app row, summed within a single metric kind. PSS splits shared pages and RSS
+// counts them whole (an upper bound): RSS is marked '≤' only when both are on screen.
+export function appMetrics(groups) {
+    const rows = groups.map(({processes}) => {
+        const kinds = new Set(processes.map(p => p.metric_kind));
+        const kind = kinds.size === 1 ? [...kinds][0] : null;
+        const value = kind && processes.every(p => Number.isFinite(p.memory_bytes)) ?
+            processes.reduce((sum, p) => sum + p.memory_bytes, 0) : null;
+        return {kind, value};
+    });
+    const shown = new Set(rows.filter(row => row.value !== null).map(row => row.kind));
+    const mixed = shown.has('pss') && shown.has('rss');
+    return rows.map(row => ({...row, approximate: mixed && row.kind === 'rss' && row.value !== null}));
+}
+
+// Partial health has several causes (a process exiting mid-sample is enough), so it is not
+// named here; the panel only shows a line when a row is actually missing its value.
+export function healthText(snapshot) {
+    return {ok: '관측 갱신됨', partial: '관측 갱신됨', error: '메모리 정보를 읽지 못함'}[snapshot?.health] ?? '관측 상태 미확인';
+}
+
 export function appView(groups, snapshot, ownerUid, protectedIds, age = 0) {
     return groups.slice(0, 100).map(group => {
         const reason = protection(group, snapshot, ownerUid, protectedIds, age);

@@ -9,14 +9,25 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
-import {DockParticipant} from './notchDock.js';
+import {DockParticipant, easeOnCurve} from './notchDock.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
-import {protection, appView, keyOf, interactionAge, takeLines} from './policy.js';
+import {protection, appView, appMetrics, healthText, keyOf, interactionAge, takeLines} from './policy.js';
 
 const MAX_LINE = 262144;
-const bytes = n => n === null || n === undefined ? '—' : `${(n / 1073741824).toFixed(2)} GiB`;
+// Widgets measured before their first style pass report short heights; style the tree first.
+const ensureStyle = actor => {
+    actor.ensure_style?.();
+    actor.get_children().forEach(ensureStyle);
+};
+// 2^30-byte values labelled GB, as memory UIs (JEDEC, macOS Activity Monitor) do.
+const bytes = n => n === null || n === undefined ? '—' : `${(n / 1073741824).toFixed(2)} GB`;
+// Metric names stay out of the visible row; screen readers still get the kind.
+const metricKind = kind => ({pss: 'PSS 비례 배분 기준', rss: 'RSS 상주 메모리 기준'})[kind] ?? '기준 미확인';
+// Must match .matci-notch padding in stylesheet.css.in. The header row centres the title on the
+// 28 px tools, so a small top pad keeps the first glyphs right under the panel.
+const PAD_TOP = 6, PAD_SIDE = 14, PAD_BOTTOM = 14;
 const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
 
 export default class Matci extends Extension {
@@ -294,7 +305,7 @@ export default class Matci extends Extension {
             this._rowButtons.clear();
             this._roleButtons.clear();
             this._scrollView = null;
-            for (const [index, child] of this._root.get_children().entries()) {
+            for (const child of this._root.get_children()) {
                 const descendants = [child];
                 while (descendants.length) {
                     const actor = descendants.pop();
@@ -302,10 +313,8 @@ export default class Matci extends Extension {
                     actor.can_focus = false;
                     descendants.push(...actor.get_children());
                 }
-                // Mirror the opening split: secondary (index >= 3) leaves first, primary one stagger later.
-                child.ease({opacity: 0, duration: DESIGN.motion.micro,
-                    delay: index >= 3 ? 0 : DESIGN.motion.secondaryDelay - DESIGN.motion.primaryDelay,
-                    mode: Clutter.AnimationMode[DESIGN.motion.collapseMode]});
+                // One short fade on the slab's curve; the retracting slab clips the rest.
+                easeOnCurve(child, {opacity: 0, duration: DESIGN.motion.micro});
             }
             this._contentHeight = 1;
             this._updatePanel();
@@ -314,7 +323,6 @@ export default class Matci extends Extension {
                 this._closingTimer = 0;
                 if (this._enabled && !this._expanded && this._root) {
                     for (const child of this._root.get_children()) child.destroy();
-                    this._root.remove_style_class_name('matci-expanded');
                 }
                 return GLib.SOURCE_REMOVE;
             });
@@ -331,8 +339,6 @@ export default class Matci extends Extension {
         this._roleButtons = new Map();
         this._scrollView = null;
         for (const child of this._root.get_children()) child.destroy();
-        this._root.remove_style_class_name('matci-expanded');
-        if (this._expanded) this._root.add_style_class_name('matci-expanded');
         const opening = this._expanded && !this._renderedExpanded;
         this._updatePanel();
         const snapshot = this._snapshot;
@@ -341,15 +347,20 @@ export default class Matci extends Extension {
         const psi = snapshot?.pressure?.some_avg10;
         const surfaceWidth = Math.min(DESIGN.geometry.matciExpanded,
             Math.max(1, (this._monitor()?.width ?? 800) - 24));
+        const innerWidth = Math.max(1, surfaceWidth - 2 * PAD_SIDE);
         if (this._expanded) {
             const header = new St.BoxLayout({style_class: 'matci-header'});
-            const brand = new St.BoxLayout({style_class: 'matci-brand'});
-            brand.add_child(this._label('메모리', 'matci-title'));
+            // Title leads, tools trail at the far end (as in Archsport), all on one vertical centre.
+            const brand = new St.BoxLayout({style_class: 'matci-brand', x_expand: true});
             const stateText = demo ? '시연' : this._versionMismatch ? '업데이트 필요' :
-                snapshot?.health === 'error' ? '연결 오류' : snapshot?.health === 'ok' ? '' : '연결 중';
-            if (stateText) {
-                brand.add_child(this._label(stateText,
-                    this._versionMismatch || snapshot?.health === 'error' ? 'matci-state-error' : 'matci-state-note'));
+                snapshot?.health === 'error' ? '연결 오류' : ['ok', 'partial'].includes(snapshot?.health) ? '' : '연결 중';
+            for (const [text, style] of [['메모리', 'matci-title'], [stateText,
+                this._versionMismatch || snapshot?.health === 'error' ? 'matci-state-error' : 'matci-state-note']]) {
+                if (!text) continue;
+                const label = this._label(text, style);
+                label.x_expand = false;
+                label.y_align = Clutter.ActorAlign.CENTER;
+                brand.add_child(label);
             }
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
@@ -359,25 +370,32 @@ export default class Matci extends Extension {
             this._root.add_child(header);
 
             const metric = new St.BoxLayout({style_class: 'matci-metric-row'});
+            // Both sit on the row's bottom edge; the detail's CSS padding lifts it onto the figure's baseline.
             const usedMetric = this._label(percent(memory?.used_ratio), 'matci-metric');
             usedMetric.x_expand = false;
+            usedMetric.y_align = Clutter.ActorAlign.END;
             metric.add_child(usedMetric);
             const usedBytes = Number.isFinite(memory?.total_bytes) && Number.isFinite(memory?.available_bytes) ?
                 memory.total_bytes - memory.available_bytes : null;
             const memoryDetail = this._label(`가용 ${bytes(memory?.available_bytes)}`,
                 'matci-metric-detail');
             memoryDetail.accessible_name = `사용 ${bytes(usedBytes)}, 가용 ${bytes(memory?.available_bytes)}, 전체 ${bytes(memory?.total_bytes)}`;
-            memoryDetail.x_align = Clutter.ActorAlign.END;
+            memoryDetail.x_align = memoryDetail.y_align = Clutter.ActorAlign.END;
             metric.add_child(memoryDetail);
             this._root.add_child(metric);
             const ratio = Number.isFinite(memory?.used_ratio) ? Math.max(0, Math.min(1, memory.used_ratio)) : 0;
-            const innerWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
+            // Orange only with the pressure warning beside it; high usage alone is often cache.
+            const pressured = Number.isFinite(psi) && psi >= 1;
             const meter = new St.BoxLayout({style_class: 'matci-meter-track', x_expand: true, height: 4});
-            meter.add_child(new St.Widget({style_class: 'matci-meter-fill', width: Math.round(innerWidth * ratio), height: 4}));
+            meter.add_child(new St.Widget({style_class: pressured ? 'matci-meter-fill matci-meter-warning' : 'matci-meter-fill',
+                width: Math.round(innerWidth * ratio), height: 4}));
             meter.add_child(new St.Widget({style_class: 'matci-meter-rest', x_expand: true, height: 4}));
             this._root.add_child(meter);
-            if (Number.isFinite(psi) && psi >= 1)
-                this._root.add_child(this._label(`메모리 압박 · PSI some 10초 ${psi.toFixed(2)}%`, 'matci-protected'));
+            if (pressured) {
+                const pressure = this._label(`메모리 압박 · 최근 10초 중 ${psi.toFixed(2)}% 지연`, 'matci-protected');
+                pressure.accessible_name = `메모리 압박, PSI some 10초 평균 ${psi.toFixed(2)}%`;
+                this._root.add_child(pressure);
+            }
 
             const scroll = new St.ScrollView({style_class: 'matci-scroll', x_expand: true, y_expand: false,
                 hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC});
@@ -387,6 +405,7 @@ export default class Matci extends Extension {
             this._root.add_child(scroll);
             const review = this._actions?.review;
             let displayedGroups = 0;
+            let missingValues = false;
             if (review) {
                 list.add_child(this._label('선택 앱의 모든 창에 정상 닫기 요청', 'matci-section-title'));
                 for (const group of review.groups)
@@ -394,26 +413,40 @@ export default class Matci extends Extension {
                 list.add_child(this._label('미저장 작업은 사라질 수 있음 · 대상 변경 시 취소', 'matci-protected'));
             } else if (demo) {
                 list.add_child(this._label('시연 데이터 · 앱 제어 없음', 'matci-section-title'));
-                for (const p of (snapshot?.processes ?? []).slice(0, 20))
-                    list.add_child(this._label(`${p.comm ?? '시연 프로세스'} · ${bytes(p.memory_bytes)} · ${p.metric_kind?.toUpperCase() ?? '—'}`, 'matci-review-row'));
+                const processes = (snapshot?.processes ?? []).slice(0, 20);
+                const marks = appMetrics(processes.map(p => ({processes: [p]})));
+                for (const [index, p] of processes.entries()) {
+                    const row = this._label(`${p.comm ?? '시연 프로세스'} · ${marks[index].approximate ? '≤' : ''}${bytes(p.memory_bytes)}`,
+                        'matci-review-row');
+                    row.accessible_name = `${p.comm ?? '시연 프로세스'}, ${bytes(p.memory_bytes)}, ${metricKind(p.metric_kind)}`;
+                    list.add_child(row);
+                }
             } else {
                 const groups = this._groups(snapshot);
+                const rowMetrics = appMetrics(groups);
+                missingValues = rowMetrics.some(row => row.value === null);
                 displayedGroups = groups.length;
                 if (groups.length) {
                     const section = new St.BoxLayout({style_class: 'matci-section'});
                     section.add_child(this._label('앱', 'matci-section-title'));
                     list.add_child(section);
                 }
-                for (const group of groups) {
+                for (const [index, group] of groups.entries()) {
                     const reason = this._protection(group, snapshot);
                     if (reason) this._selected.delete(group.appId);
+                    const {kind, value, approximate} = rowMetrics[index];
+                    const ages = group.processes.map(p => p.metric_age_ms);
+                    const age = ages.length && ages.every(Number.isFinite) ?
+                        `${Math.round(Math.max(...ages) / 1000)}초 전 관측` : '관측 시각 미확인';
                     const row = new St.BoxLayout({style_class: 'matci-app-row'});
                     const selected = this._selected.has(group.appId);
+                    // The focusable row carries what the row no longer prints: metric kind, age, protection reason.
                     const select = new St.Button({style_class: reason ? 'matci-app-protected' :
                         selected ? 'matci-app-select matci-app-selected' : 'matci-app-select',
                         x_expand: true, can_focus: !this._actions.busy, reactive: !this._actions.busy,
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
-                            `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}`});
+                            `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}, ` +
+                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}`});
                     select._matciAppId = group.appId;
                     // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
                     select.connect('key-focus-in', () => {
@@ -428,14 +461,19 @@ export default class Matci extends Extension {
                     } catch (_error) {
                         appContent.add_child(new St.Icon({icon_name: 'application-x-executable-symbolic', icon_size: 18}));
                     }
-                    if (reason) appContent.add_child(new St.Icon({icon_name: 'changes-prevent-symbolic', icon_size: 16}));
                     const appName = this._label(group.name, 'matci-app-name');
                     appName.x_expand = true;
                     appName.clutter_text.set_ellipsize(Pango.EllipsizeMode.END);
                     appContent.add_child(appName);
-                    if (reason) appContent.add_child(this._label('보호', 'matci-protection-note'));
+                    // Trailing status slot (lock or check) keeps app names aligned in one column.
+                    if (reason) appContent.add_child(new St.Icon({icon_name: 'changes-prevent-symbolic', icon_size: 14}));
                     if (selected) appContent.add_child(new St.Icon({icon_name: 'object-select-symbolic',
-                        style_class: 'matci-selected-check', icon_size: 16}));
+                        style_class: 'matci-selected-check', icon_size: 14}));
+                    // RSS beside PSS includes shared memory and reads larger: marked and dimmed.
+                    const metricLabel = approximate ? this._label(`≤${bytes(value)}`, 'matci-app-metric matci-app-metric-approx') :
+                        this._label(bytes(value), 'matci-app-metric');
+                    metricLabel.x_expand = false;
+                    appContent.add_child(metricLabel);
                     select.set_child(appContent);
                     select.connect('clicked', () => {
                         if (reason) return;
@@ -443,20 +481,6 @@ export default class Matci extends Extension {
                         this._render();
                     });
                     row.add_child(select);
-                    const metrics = group.processes;
-                    const kinds = new Set(metrics.map(p => p.metric_kind));
-                    const value = metrics.length && kinds.size === 1 && metrics.every(p => Number.isFinite(p.memory_bytes)) ?
-                        metrics.reduce((sum, p) => sum + p.memory_bytes, 0) : null;
-                    const ages = metrics.map(p => p.metric_age_ms);
-                    const age = ages.length && ages.every(Number.isFinite) ? `${Math.round(Math.max(...ages) / 1000)}s` : '—';
-                    const metricBox = new St.BoxLayout({vertical: true, style_class: 'matci-app-values'});
-                    const metricLabel = this._label(`${bytes(value)} ${kinds.size === 1 ? [...kinds][0]?.toUpperCase() : '—'}`,
-                        'matci-app-metric');
-                    metricLabel.x_expand = false;
-                    metricLabel.x_align = Clutter.ActorAlign.END;
-                    metricLabel.accessible_name = `${bytes(value)}, ${kinds.size === 1 ? [...kinds][0]?.toUpperCase() : '기준 미확인'}, 관측 ${age} 전`;
-                    metricBox.add_child(metricLabel);
-                    row.add_child(metricBox);
                     list.add_child(row);
                 }
                 if (!groups.length) list.add_child(this._label('열린 앱 없음', 'matci-empty'));
@@ -465,11 +489,14 @@ export default class Matci extends Extension {
                 const actionText = this._actionStatus === 'observing' ? '요청됨 · 창 상태 확인 중' :
                     this._actionStatus === 'completed' ? '창 닫힘 · RAM 재측정' : this._message;
                 list.add_child(this._label(actionText, 'matci-status'));
-            } else if (this._versionMismatch || (snapshot?.health && snapshot.health !== 'ok')) {
+            } else if (this._versionMismatch || snapshot?.health === 'error') {
                 list.add_child(this._label(this._message, 'matci-status-error'));
+            } else if (snapshot?.health === 'partial' && missingValues) {
+                // Partial health only earns a line when it is visible: a row without a value.
+                list.add_child(this._label('일부 앱의 메모리 값을 확인하지 못함', 'matci-status'));
             }
-            const contentWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
-            const [, listNatural] = list.get_preferred_height(contentWidth);
+            ensureStyle(this._root);
+            const [, listNatural] = list.get_preferred_height(innerWidth);
             const listHeight = Math.min(190, Math.max(1, Math.ceil(listNatural),
                 displayedGroups ? 18 + displayedGroups * 42 : 0));
             scroll.set_policy(St.PolicyType.NEVER,
@@ -500,25 +527,28 @@ export default class Matci extends Extension {
         this._root.accessible_name = `matci ${demo ? '합성 시연' : '시스템 메모리'}. ${percent(memory?.used_ratio)} 사용. ` +
             `앱별 PSS 또는 RSS는 시스템 가용 RAM이나 회수량이 아닙니다. 입력 시각은 안전 판정이 아닙니다. ${this._message}`;
         if (this._expanded) {
-            const contentWidth = Math.max(1, surfaceWidth - 2 * DESIGN.spacing.lg);
+            ensureStyle(this._root);
             const children = this._root.get_children();
             const childHeight = children.reduce((sum, child) => {
-                const [, natural] = child.get_preferred_height(contentWidth);
+                const [, natural] = child.get_preferred_height(innerWidth);
                 return sum + natural;
             }, 0);
-            this._contentHeight = Math.min(376, Math.max(194,
-                Math.ceil(childHeight + Math.max(0, children.length - 1) * DESIGN.spacing.sm +
-                    DESIGN.spacing.xl + 26)));
+            // Children plus root spacing, at least 144 px; the list is already capped at 190,
+            // so no upper clamp that could clip the controls. The padding is added exactly.
+            this._contentHeight = PAD_TOP + PAD_BOTTOM + Math.max(144,
+                Math.ceil(childHeight + Math.max(0, children.length - 1) * DESIGN.spacing.sm));
         } else this._contentHeight = 1;
         this._visibility();
         if (opening && this._interface.get_boolean('enable-animations')) {
+            // Content settles down into the growing slab on its curve, a beat after the surface:
+            // header and figures first, then the list and controls.
             for (const [index, child] of this._root.get_children().entries()) {
+                const primary = index < 3;
                 child.opacity = 0;
-                child.translation_y = 4;
-                child.ease({opacity: 255, translation_y: 0,
-                    duration: index >= 3 ? DESIGN.motion.secondaryDuration : DESIGN.motion.primaryDuration,
-                    delay: index >= 3 ? DESIGN.motion.secondaryDelay : DESIGN.motion.primaryDelay,
-                    mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+                child.translation_y = -DESIGN.motion.contentShift;
+                easeOnCurve(child, {opacity: 255, translation_y: 0,
+                    duration: primary ? DESIGN.motion.primaryDuration : DESIGN.motion.secondaryDuration,
+                    delay: primary ? DESIGN.motion.primaryDelay : DESIGN.motion.secondaryDelay});
             }
         }
         this._renderedExpanded = this._expanded;
@@ -647,7 +677,7 @@ export default class Matci extends Extension {
             this._receivedAt = this._now();
             if (++this._goodSamples >= 3) this._failures = 0;
             if (!this._actions.busy && !this._actions.review && !this._versionMismatch) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :
-                `${message.health} · PSI some ${message.pressure?.some_avg10 ?? '확인 불가'} · 관측 갱신됨`;
+                healthText(message);
             this._suggest(message);
             // Preserve keyboard focus on confirmation and observation controls.
             // Fresh samples still replace the underlying identity for close checks.

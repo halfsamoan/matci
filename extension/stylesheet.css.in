@@ -3,21 +3,17 @@
     background-color: transparent;
     color: {{color.labelPrimary}};
     border-radius: 0;
-    padding: 35px {{spacing.lg}}px {{spacing.md}}px;
+    padding: 6px 14px 14px;
     spacing: {{spacing.sm}}px;
     box-shadow: none;
 }
-.shared-notch-blur { background-color: rgba(9, 10, 12, 0.03); }
 .matci-notch StLabel, .matci-notch StButton, .matci-panel-status StLabel { font-family: '{{typography.family}}'; }
-.matci-notch.matci-expanded { padding: 35px {{spacing.lg}}px {{spacing.md}}px; spacing: {{spacing.sm}}px; }
 .matci-header, .matci-brand, .matci-header-tools, .matci-controls,
 .matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
-.matci-reason-row, .matci-panel-status { spacing: 8px; }
-.matci-footnote-row { min-height: 18px; spacing: {{spacing.sm}}px; }
-.matci-footnote-row StIcon { color: {{color.labelTertiary}}; }
+.matci-panel-status { spacing: 8px; }
 .matci-header { min-height: 28px; }
 .matci-brand { spacing: {{spacing.sm}}px; }
-.matci-title { color: {{color.labelPrimary}}; font-weight: 600; font-size: {{typography.primary}}px; letter-spacing: 0.02em; }
+.matci-title { color: {{color.labelSecondary}}; font-weight: 600; font-size: {{typography.primary}}px; letter-spacing: 0.02em; }
 .matci-state-note, .matci-state-error {
     font-size: {{typography.caption}}px;
     font-weight: 600;
@@ -25,35 +21,32 @@
 .matci-state-note { color: {{color.labelTertiary}}; }
 .matci-state-error { color: {{color.accentCritical}}; }
 .matci-metric-row { min-height: 38px; spacing: {{spacing.md}}px; }
-.matci-metric { color: {{color.labelPrimary}}; font-size: {{typography.hero}}px; font-weight: 600; }
-.matci-metric-detail { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
+.matci-metric { color: {{color.labelPrimary}}; font-size: {{typography.hero}}px; font-weight: 600; font-feature-settings: "tnum"; }
+/* Bottom-aligned with the hero figure; 5 px = its descent (8) minus the detail's (3) at 30/12 px. */
+.matci-metric-detail { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; font-feature-settings: "tnum"; padding-bottom: 5px; }
 .matci-meter-track { border-radius: 3px; background-color: {{color.surfaceTrack}}; }
 .matci-meter-fill { border-radius: 3px; background-color: {{color.labelSecondary}}; }
+.matci-meter-warning { background-color: {{color.accentWarning}}; }
 .matci-meter-rest { background-color: transparent; }
-.matci-footnote { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
 .matci-scroll { min-height: 0px; max-height: 190px; }
 .matci-scroll StScrollBar { -slider-width: 2px; }
 .matci-scroll StScrollBar StBin#trough { background-color: transparent; }
 .matci-list { spacing: {{spacing.xs}}px; padding-top: 2px; }
 .matci-section { min-height: 18px; }
-.matci-section-title { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; font-weight: 700; }
+.matci-section-title { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; font-weight: 600; }
 .matci-app-row { min-height: 36px; padding: 2px; }
-.matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 12px; background-color: transparent; }
+.matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 8px; background-color: transparent; }
 .matci-app-select:hover { background-color: {{color.separatorSubtle}}; }
 .matci-app-select:focus, .matci-app-protected:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
 .matci-app-select StIcon { color: {{color.labelSecondary}}; }
-.matci-app-selected { background-color: {{color.hoverWash}}; }
-.matci-selected-check { color: {{color.focus}} !important; }
+.matci-app-selected, .matci-app-selected:hover { background-color: {{color.pressedWash}}; }
+.matci-selected-check { color: {{color.labelPrimary}} !important; }
 .matci-app-protected { color: {{color.labelSecondary}}; }
 .matci-app-protected StIcon { color: {{color.labelTertiary}}; }
-.matci-protection-note { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
-.matci-reason-row StIcon { color: {{color.accentWarning}}; }
 .matci-app-name { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; }
 .matci-app-icon { border-radius: 4px; }
-.matci-app-values { spacing: {{spacing.xs}}px; }
-.matci-app-metric { color: {{color.labelSecondary}}; font-size: {{typography.caption}}px; }
-.matci-app-input { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
-.matci-reason-row { padding-left: 10px; }
+.matci-app-metric { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; font-feature-settings: "tnum"; }
+.matci-app-metric-approx { color: {{color.labelTertiary}}; }
 .matci-protected { color: {{color.accentWarning}}; font-size: {{typography.caption}}px; }
 .matci-review-row { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
 .matci-empty { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; padding: 12px 0; }
@@ -62,19 +55,22 @@
 .matci-controls { min-height: 28px; }
 .matci-button, .matci-icon-button {
     color: {{color.labelPrimary}};
-    border-radius: 14px;
+    border-radius: 8px;
     background-color: {{color.surfaceElevated}};
 }
 .matci-button { padding: 7px 12px; font-size: {{typography.secondary}}px; }
-.matci-icon-button { width: {{control.size}}px; height: {{control.size}}px; border-radius: 8px; background-color: transparent; }
+.matci-icon-button { color: {{color.labelSecondary}}; width: {{control.size}}px; height: {{control.size}}px; background-color: transparent; }
 .matci-button:hover { background-color: {{color.surfaceHover}}; }
-.matci-icon-button:hover { background-color: {{color.hoverWash}}; }
+.matci-icon-button:hover { color: {{color.labelPrimary}}; background-color: {{color.hoverWash}}; }
 .matci-button:active { background-color: {{color.surfacePressed}}; }
 .matci-icon-button:active { background-color: {{color.pressedWash}}; }
 .matci-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: {{color.labelDisabled}}; }
 .matci-primary-button { color: #ffffff; background-color: {{color.actionPrimary}}; font-weight: 600; }
 .matci-primary-button:hover { color: {{color.labelPrimary}}; background-color: {{color.actionHover}}; }
+/* A blue ring vanishes on the blue fill; the primary button takes a light inner ring instead. */
+.matci-primary-button:focus { box-shadow: inset 0 0 0 2px {{color.labelPrimary}}; }
 .matci-panel-status { spacing: 4px; }
+.matci-panel-status StLabel { font-feature-settings: "tnum"; }
 .matci-panel-status StIcon { color: {{color.labelSecondary}}; }
 .matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px {{color.focus}}; border-radius: 8px; }

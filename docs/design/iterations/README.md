@@ -1,5 +1,16 @@
 # matci GNOME 50.1 네이티브 시각 반복 · 2026-10-19
 
+## 2026-10-20 Mac 노치 slab (matci v18 / Archsport v21)
+
+격리 GNOME Shell 50.1에 합성 상태를 넣어 촬영했다(실제 세션 아님). 설계와 검증 내용은 [native-validation.md](../native-validation.md) 최상단 절.
+
+| 상태 | 캡처 |
+| --- | --- |
+| 기본 + Archsport compact 공존 | [16-v18-normal-coexist.png](16-v18-normal-coexist.png) |
+| 선택 | [17-v18-selected.png](17-v18-selected.png) |
+| 검토 | [18-v18-review.png](18-v18-review.png) |
+| 닫힘 20–260ms | [19-v18-close.png](19-v18-close.png) |
+
 ## 2026-10-20 v16 마무리 후보
 
 격리된 GNOME Shell 50.1에 최종 소스를 설치하고 실행 중인 복사본에만 Eval로

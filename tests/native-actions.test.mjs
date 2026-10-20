@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
-import {protection, sameTargets, interactionAge, takeLines} from '../extension/policy.js';
+import {protection, sameTargets, interactionAge, takeLines, appMetrics, healthText} from '../extension/policy.js';
 
 const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
@@ -151,4 +151,31 @@ test('post-ack fresh sampling respects the real worker 250ms rate limit', async 
     };
     assert.equal(await f.controller.confirm(), 'completed');
     assert.deepEqual(at, [0, 300, 1300]);
+});
+
+test('RSS rows are marked approximate only when PSS rows are shown beside them', () => {
+    const p = (metric_kind, memory_bytes) => ({metric_kind, memory_bytes});
+    const mixed = appMetrics([{processes: [p('pss', 2), p('pss', 3)]}, {processes: [p('rss', 7)]},
+        {processes: [p('pss', 1), p('rss', 1)]}, {processes: []}]);
+    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate]),
+        [['pss', 5, false], ['rss', 7, true], [null, null, false], [null, null, false]]);
+    assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('rss', 2)]}]).every(row => !row.approximate));
+    // A mixed group prints no value, so it cannot make the others look mixed.
+    assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('pss', 1), p('rss', 1)]}]).every(row => !row.approximate));
+});
+
+test('partial health never names a cause; the panel only reports a visibly missing value', () => {
+    const listed = [{pid: 1}];
+    for (const sample of [{health: 'partial', warnings: ['PROCESS_COVERAGE_PARTIAL'], processes: listed},
+        {health: 'partial', warnings: ['BOOT_ID_UNAVAILABLE'], processes: listed}, {health: 'partial'}])
+        assert.equal(healthText(sample), '관측 갱신됨');
+    assert.equal(healthText({health: 'ok', warnings: ['PSI_UNAVAILABLE']}), '관측 갱신됨');
+    assert.equal(healthText({health: 'error'}), '메모리 정보를 읽지 못함');
+    assert.equal(healthText({health: 'odd'}), '관측 상태 미확인');
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    assert.match(source, /missingValues = rowMetrics\.some\(row => row\.value === null\)/);
+    assert.match(source, /snapshot\?\.health === 'partial' && missingValues/);
+    // RSS beside PSS is an upper bound, and the content height is never clamped below its children.
+    assert.match(source, /`≤\$\{bytes\(value\)\}`/);
+    assert.doesNotMatch(source, /Math\.min\(326/);
 });

@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DOCK_PROTOCOL, buttonNumber, layoutNotches, canClaim, isActorWithin, isPointWithinActor,
-    classifyOutsideSurface, dispatchOutsideDismiss} from '../extension/dockModel.js';
+    classifyOutsideSurface, dispatchOutsideDismiss, notchGeometry, pointInNotchShape} from '../extension/dockModel.js';
 
 const monitor = {x: 100, y: 0, width: 1280, panelHeight: 32};
 test('two islands form one centered group below panel without overlap', () => {
@@ -31,7 +31,7 @@ test('manual review is not interrupted by automatic events', () => {
 });
 
 test('shared dock protocol and manual tie use last-toggle ownership', () => {
-    assert.equal(DOCK_PROTOCOL, 5);
+    assert.equal(DOCK_PROTOCOL, 6);
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 
@@ -86,17 +86,60 @@ test('only the active notch trigger is exempt from outside dismissal', () => {
         expanded: true}, () => {}, otherClick), true);
 });
 
-test('blur inset and hit-region margins survive St style resets', async () => {
-    const {DESIGN} = await import('../extension/designTokens.js');
+test('opaque slab hit-tests the body between the ears and inside the rounded bottom', () => {
     const source = readFileSync(new URL('../extension/notchSurface.js', import.meta.url), 'utf8');
-    // St re-applies CSS margins on every style change, so margin_* constructor properties reset to 0
-    // and the BACKGROUND blur then paints the whole surface rectangle past the rounded corners.
-    assert.doesNotMatch(source, /margin_(left|right|top|bottom)\s*:/);
-    assert.match(source, /style: `margin: /);
-    // Hit-region margins are re-applied after style changes for the same reason.
+    assert.doesNotMatch(source, /BlurEffect/);
+    // St re-applies CSS margins on every style change; hit regions are recomputed after it.
     assert.match(source, /connect\('style-changed', updateHitRegions\)/);
-    // The Cairo Bézier corner reaches 0.3125 × radius inward at its diagonal midpoint.
-    assert.ok(DESIGN.material.blurInset >= 0.3125 * DESIGN.radius.surface);
+    // matci body 368 + two 14 px ears, 250 px tall: radius 22 at the bottom.
+    assert.deepEqual(notchGeometry(250, 396), {ear: 14, radius: 22, sliver: false});
+    assert.equal(notchGeometry(6, 104).sliver, true);
+    assert.equal(pointInNotchShape(5, 5, 396, 250), false);
+    assert.equal(pointInNotchShape(391, 5, 396, 250), false);
+    assert.equal(pointInNotchShape(198, 5, 396, 250), true);
+    assert.equal(pointInNotchShape(16, 248, 396, 250), false);
+    assert.equal(pointInNotchShape(198, 250, 396, 250), true);
+});
+
+test('content starts right under the panel and the height adds the CSS padding exactly', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../extension/stylesheet.css.in', import.meta.url), 'utf8');
+    const [, top, side, bottom] = source.match(/const PAD_TOP = (\d+), PAD_SIDE = (\d+), PAD_BOTTOM = (\d+);/);
+    assert.match(css, new RegExp(`^\\.matci-notch \\{\\n(?: {4}.*\\n)*? {4}padding: ${top}px ${side}px ${bottom}px;$`, 'm'));
+    assert.equal((css.match(/padding: \d+px \d+px \d+px;/g) ?? []).length, 1);
+    assert.ok(Number(top) <= 12);
+    assert.match(source, /this\._contentHeight = PAD_TOP \+ PAD_BOTTOM \+ /);
+    // Content settles downward on the slab's curve.
+    assert.match(source, /child\.translation_y = -DESIGN\.motion\.contentShift;\n\s+easeOnCurve\(child, \{opacity: 255/);
+});
+
+test('app rows print values only; metric kind and age stay in the accessible name', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /GiB|toUpperCase\(\)/);
+    assert.ok(source.includes("this._label(bytes(value), 'matci-app-metric')"));
+    assert.match(source, /메모리 \$\{bytes\(value\)\}, \$\{metricKind\(kind\)\}, \$\{age\}/);
+    assert.ok(!source.includes("'보호'"));
+});
+
+test('header leads with the title, tools trail; figures share a baseline; primary focus shows on blue', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../extension/stylesheet.css.in', import.meta.url), 'utf8');
+    assert.match(source, /new St\.BoxLayout\(\{style_class: 'matci-brand', x_expand: true\}\)/);
+    assert.match(source, /label\.x_expand = false;\n\s+label\.y_align = Clutter\.ActorAlign\.CENTER;\n\s+brand\.add_child\(label\)/);
+    assert.match(source, /usedMetric\.y_align = Clutter\.ActorAlign\.END;/);
+    assert.match(source, /memoryDetail\.x_align = memoryDetail\.y_align = Clutter\.ActorAlign\.END;/);
+    assert.match(css, /^\.matci-metric-detail \{.*padding-bottom: 5px; \}$/m);
+    assert.match(css, /^\.matci-primary-button:focus \{ box-shadow: inset 0 0 0 2px \{\{color\.labelPrimary\}\}; \}$/m);
+    // Equal specificity: the primary ring must come after the generic blue one to win.
+    assert.ok(css.indexOf('.matci-primary-button:focus') > css.indexOf('.matci-button:focus'));
+});
+
+test('blue marks focus and the primary action; orange marks real warnings only', () => {
+    const css = readFileSync(new URL('../extension/stylesheet.css.in', import.meta.url), 'utf8');
+    for (const line of css.split('\n')) {
+        if (/color\.(focus|actionPrimary|actionHover)\}\}/.test(line)) assert.match(line, /:focus|matci-primary-button/);
+        if (line.includes('{{color.accentWarning}}')) assert.match(line, /^\.matci-(protected|meter-warning) /);
+    }
 });
 
 test('numpad toggle shortcut is bound on enable and released on disable', () => {
@@ -105,4 +148,12 @@ test('numpad toggle shortcut is bound on enable and released on disable', () => 
     assert.match(source, /addKeybinding\('matci-toggle-shortcut'/);
     assert.match(source, /disable\(\) \{\n\s+this\._enabled = false;\n\s+Main\.wm\.removeKeybinding\('matci-toggle-shortcut'\);/);
     assert.ok(schema.includes(`<key name="matci-toggle-shortcut" type="as"><default>['KP_Delete', 'KP_Decimal']</default>`));
+});
+
+test('the notch tree is styled before it is measured', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    // Unmapped widgets report short heights until styled; the recursion reaches every row.
+    assert.match(source, /actor\.ensure_style\?\.\(\);\n\s+actor\.get_children\(\)\.forEach\(ensureStyle\)/);
+    assert.ok(source.indexOf('ensureStyle(this._root);') < source.indexOf('list.get_preferred_height('));
+    assert.ok(source.lastIndexOf('ensureStyle(this._root);') < source.indexOf('child.get_preferred_height(innerWidth)'));
 });

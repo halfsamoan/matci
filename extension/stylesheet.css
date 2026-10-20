@@ -3,78 +3,74 @@
     background-color: transparent;
     color: #f5f5f7;
     border-radius: 0;
-    padding: 35px 16px 12px;
+    padding: 6px 14px 14px;
     spacing: 8px;
     box-shadow: none;
 }
-.shared-notch-blur { background-color: rgba(9, 10, 12, 0.03); }
 .matci-notch StLabel, .matci-notch StButton, .matci-panel-status StLabel { font-family: 'Pretendard'; }
-.matci-notch.matci-expanded { padding: 35px 16px 12px; spacing: 8px; }
 .matci-header, .matci-brand, .matci-header-tools, .matci-controls,
 .matci-metric-row, .matci-section, .matci-app-row, .matci-app-name-row,
-.matci-reason-row, .matci-panel-status { spacing: 8px; }
-.matci-footnote-row { min-height: 18px; spacing: 8px; }
-.matci-footnote-row StIcon { color: #a8abb2; }
+.matci-panel-status { spacing: 8px; }
 .matci-header { min-height: 28px; }
 .matci-brand { spacing: 8px; }
-.matci-title { color: #f5f5f7; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; }
+.matci-title { color: #a1a1a8; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; }
 .matci-state-note, .matci-state-error {
     font-size: 11px;
     font-weight: 600;
 }
-.matci-state-note { color: #a8abb2; }
-.matci-state-error { color: #ff5f56; }
+.matci-state-note { color: #808087; }
+.matci-state-error { color: #ff4245; }
 .matci-metric-row { min-height: 38px; spacing: 12px; }
-.matci-metric { color: #f5f5f7; font-size: 30px; font-weight: 600; }
-.matci-metric-detail { color: #b5b7be; font-size: 12px; }
+.matci-metric { color: #f5f5f7; font-size: 30px; font-weight: 600; font-feature-settings: "tnum"; }
+/* Bottom-aligned with the hero figure; 5 px = its descent (8) minus the detail's (3) at 30/12 px. */
+.matci-metric-detail { color: #a1a1a8; font-size: 12px; font-feature-settings: "tnum"; padding-bottom: 5px; }
 .matci-meter-track { border-radius: 3px; background-color: #292b30; }
-.matci-meter-fill { border-radius: 3px; background-color: #b5b7be; }
+.matci-meter-fill { border-radius: 3px; background-color: #a1a1a8; }
+.matci-meter-warning { background-color: #ff9230; }
 .matci-meter-rest { background-color: transparent; }
-.matci-footnote { color: #a8abb2; font-size: 11px; }
 .matci-scroll { min-height: 0px; max-height: 190px; }
 .matci-scroll StScrollBar { -slider-width: 2px; }
 .matci-scroll StScrollBar StBin#trough { background-color: transparent; }
 .matci-list { spacing: 4px; padding-top: 2px; }
 .matci-section { min-height: 18px; }
-.matci-section-title { color: #f5f5f7; font-size: 12px; font-weight: 700; }
+.matci-section-title { color: #a1a1a8; font-size: 12px; font-weight: 600; }
 .matci-app-row { min-height: 36px; padding: 2px; }
-.matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 12px; background-color: transparent; }
+.matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 8px; background-color: transparent; }
 .matci-app-select:hover { background-color: rgba(255, 255, 255, 0.07); }
-.matci-app-select:focus, .matci-app-protected:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
-.matci-app-select StIcon { color: #b5b7be; }
-.matci-app-selected { background-color: rgba(255, 255, 255, 0.07); }
-.matci-selected-check { color: #8ab4ff !important; }
-.matci-app-protected { color: #b5b7be; }
-.matci-app-protected StIcon { color: #a8abb2; }
-.matci-protection-note { color: #a8abb2; font-size: 11px; }
-.matci-reason-row StIcon { color: #ffb84d; }
+.matci-app-select:focus, .matci-app-protected:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px #0a84ff; }
+.matci-app-select StIcon { color: #a1a1a8; }
+.matci-app-selected, .matci-app-selected:hover { background-color: rgba(255, 255, 255, 0.12); }
+.matci-selected-check { color: #f5f5f7 !important; }
+.matci-app-protected { color: #a1a1a8; }
+.matci-app-protected StIcon { color: #808087; }
 .matci-app-name { color: #f5f5f7; font-size: 12px; }
 .matci-app-icon { border-radius: 4px; }
-.matci-app-values { spacing: 4px; }
-.matci-app-metric { color: #b5b7be; font-size: 11px; }
-.matci-app-input { color: #a8abb2; font-size: 11px; }
-.matci-reason-row { padding-left: 10px; }
-.matci-protected { color: #ffb84d; font-size: 11px; }
-.matci-review-row { color: #b5b7be; font-size: 12px; }
-.matci-empty { color: #b5b7be; font-size: 12px; padding: 12px 0; }
-.matci-status { color: #b5b7be; font-size: 11px; }
-.matci-status-error { color: #ff5f56; font-size: 11px; }
+.matci-app-metric { color: #a1a1a8; font-size: 12px; font-feature-settings: "tnum"; }
+.matci-app-metric-approx { color: #808087; }
+.matci-protected { color: #ff9230; font-size: 11px; }
+.matci-review-row { color: #a1a1a8; font-size: 12px; }
+.matci-empty { color: #a1a1a8; font-size: 12px; padding: 12px 0; }
+.matci-status { color: #a1a1a8; font-size: 11px; }
+.matci-status-error { color: #ff4245; font-size: 11px; }
 .matci-controls { min-height: 28px; }
 .matci-button, .matci-icon-button {
     color: #f5f5f7;
-    border-radius: 14px;
+    border-radius: 8px;
     background-color: #23252a;
 }
 .matci-button { padding: 7px 12px; font-size: 12px; }
-.matci-icon-button { width: 28px; height: 28px; border-radius: 8px; background-color: transparent; }
+.matci-icon-button { color: #a1a1a8; width: 28px; height: 28px; background-color: transparent; }
 .matci-button:hover { background-color: #303238; }
-.matci-icon-button:hover { background-color: rgba(255, 255, 255, 0.07); }
+.matci-icon-button:hover { color: #f5f5f7; background-color: rgba(255, 255, 255, 0.07); }
 .matci-button:active { background-color: #3a3c43; }
 .matci-icon-button:active { background-color: rgba(255, 255, 255, 0.12); }
-.matci-button:focus { box-shadow: inset 0 0 0 2px #8ab4ff; }
+.matci-button:focus { box-shadow: inset 0 0 0 2px #0a84ff; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: #838b97; }
-.matci-primary-button { color: #ffffff; background-color: #006fe6; font-weight: 600; }
-.matci-primary-button:hover { color: #f5f5f7; background-color: #0066d3; }
+.matci-primary-button { color: #ffffff; background-color: #0a84ff; font-weight: 600; }
+.matci-primary-button:hover { color: #f5f5f7; background-color: #0077ed; }
+/* A blue ring vanishes on the blue fill; the primary button takes a light inner ring instead. */
+.matci-primary-button:focus { box-shadow: inset 0 0 0 2px #f5f5f7; }
 .matci-panel-status { spacing: 4px; }
-.matci-panel-status StIcon { color: #b5b7be; }
-.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #8ab4ff; border-radius: 8px; }
+.matci-panel-status StLabel { font-feature-settings: "tnum"; }
+.matci-panel-status StIcon { color: #a1a1a8; }
+.matci-panel-button:focus .matci-panel-status { box-shadow: inset 0 0 0 2px #0a84ff; border-radius: 8px; }
