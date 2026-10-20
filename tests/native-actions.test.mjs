@@ -2,13 +2,52 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
-import {protection, sameTargets, interactionAge, takeLines, appMetrics, healthText} from '../extension/policy.js';
+import {protection, sameTargets, interactionAge, takeLines, appMetrics, lowAccuracy, healthText} from '../extension/policy.js';
 
 const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
 const proc = {uid: 1000, pid: 42, start_ticks: 8, identity_observed_monotonic_ms: 100};
 const sample = {mode: 'live', sample_id: 'a', monotonic_ms: 100, processes: [proc]};
 const group = {appId: 'org.gnome.Calculator.desktop', processes: [proc], windows: [{}]};
+test('re-enable keeps worker generations monotonic', () => {
+    assert.match(extensionSource, /this\._generation = \(this\._generation \?\? 0\) \+ 1;/);
+    assert.doesNotMatch(extensionSource, /this\._generation = 0;/);
+});
+test('new enable and idle collapse clear stale action status', () => {
+    assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._panelSnapshot = null;[\s\S]*?this\._receivedAt = 0;[\s\S]*?this\._actionStatus = null;/);
+    assert.match(extensionSource, /if \(!this\._actions\?\.busy\) this\._actionStatus = null;/);
+});
+test('expanded matci requests full detail and light snapshots never replace app-action data', () => {
+    assert.match(extensionSource, /this\._setDetail\(true\)/);
+    assert.match(extensionSource, /if \(!this\._actions\?\.review && !this\._actions\?\.busy\) this\._setDetail\(false\)/);
+    assert.match(extensionSource, /this\._request\('set_detail', \{detail: requested\}\)/);
+    assert.match(extensionSource, /const detailPaused = message\.warnings\?\.includes\('PROCESS_DETAIL_PAUSED'\)/);
+    assert.match(extensionSource, /this\._panelSnapshot = message;\n\s+if \(!detailPaused\) this\._snapshot = message;/);
+    assert.match(extensionSource, /this\._detailCommandSupported = false/);
+    assert.match(extensionSource, /COMMAND_NOT_SUPPORTED/);
+    assert.match(extensionSource, /const detailReady = Boolean\(snapshot\) && \(demo \|\| \(!this\._detailPaused && !this\._detailLoading\)\)/);
+    assert.match(extensionSource, /if \(firstSnapshot\) this\._setDetail\(this\._detailDesired\)/);
+});
+test('automatic suggestion timeout stays open for a selected app', () => {
+    assert.match(extensionSource, /!this\._actions\.review && !this\._actions\.busy && !this\._selected\.size/);
+    assert.match(extensionSource, /select\.connect\('clicked', \(\) => \{\n\s+if \(reason \|\| !detailReady \|\| this\._detailLoading \|\| this\._detailPaused\) return;\n\s+if \(this\._eventTimer\) \{ GLib\.source_remove\(this\._eventTimer\); this\._eventTimer = 0; \}/);
+});
+test('closing releases notch focus back to the prior application window', () => {
+    assert.match(extensionSource, /import \{isActorWithin\} from '\.\/dockModel\.js';/);
+    assert.match(extensionSource, /_returnWindow = global\.display\.get_focus_window\(\)/);
+    assert.match(extensionSource, /_releaseFocus\(\) \{[\s\S]*?global\.stage\.set_key_focus\(null\);[\s\S]*?win\.focus\(global\.get_current_time\(\)\)/);
+    assert.match(extensionSource, /if \(manual && this\._dock\.state\.visible\) this\._root\.grab_key_focus\(\)/);
+    assert.match(extensionSource, /if \(restoreFocus\) this\._releaseFocus\(\)/);
+    assert.doesNotMatch(extensionSource, /if \(restoreFocus\) this\._indicator\.grab_key_focus\(\)/);
+    assert.match(extensionSource, /toggle\(\);\n\s+if \(!this\._expanded\) this\._indicator\.grab_key_focus\(\);/);
+});
+test('overview and hidden fullscreen collapse expanded matci while preserving review state', () => {
+    assert.ok(extensionSource.includes('if (this._expanded) this._collapse(false, {keepReview: true});'));
+    assert.ok(extensionSource.includes("this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen && this._expanded"));
+    assert.match(extensionSource, /_onOverviewShowing\(\)/);
+    assert.match(extensionSource, /_onFullscreenChanged\(\)/);
+    assert.match(extensionSource, /Main\.overview, 'showing', \(\) => this\._onOverviewShowing\(\)/);
+});
 test('input-age hints handle short uint32 wrap and reject unknown/backward/old baselines', () => {
     assert.equal(interactionAge(1200, 2200, 1000), 1000);
     assert.equal(interactionAge(0xfffffff0, 20, 0xffffffe0), 36);
@@ -153,15 +192,20 @@ test('post-ack fresh sampling respects the real worker 250ms rate limit', async 
     assert.deepEqual(at, [0, 300, 1300]);
 });
 
-test('RSS rows are marked approximate only when PSS rows are shown beside them', () => {
-    const p = (metric_kind, memory_bytes) => ({metric_kind, memory_bytes});
+test('RSS and incomplete rows are identified as partial measurements', () => {
+    const p = (metric_kind, memory_bytes, coverage = 'complete') => ({metric_kind, memory_bytes, coverage});
     const mixed = appMetrics([{processes: [p('pss', 2), p('pss', 3)]}, {processes: [p('rss', 7)]},
         {processes: [p('pss', 1), p('rss', 1)]}, {processes: []}]);
-    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate]),
-        [['pss', 5, false], ['rss', 7, true], [null, null, false], [null, null, false]]);
+    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate, row.coverage]),
+        [['pss', 5, false, 'complete'], ['rss', 7, true, 'complete'], [null, null, false, 'partial'],
+            [null, null, false, 'partial']]);
     assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('rss', 2)]}]).every(row => !row.approximate));
     // A mixed group prints no value, so it cannot make the others look mixed.
     assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('pss', 1), p('rss', 1)]}]).every(row => !row.approximate));
+    assert.equal(lowAccuracy(mixed[0]), false);
+    assert.equal(lowAccuracy(mixed[1]), true);
+    assert.equal(lowAccuracy({...mixed[0], approximate: true}), true);
+    assert.equal(lowAccuracy({...mixed[0], coverage: 'partial'}), true);
 });
 
 test('partial health never names a cause; the panel only reports a visibly missing value', () => {
@@ -175,7 +219,6 @@ test('partial health never names a cause; the panel only reports a visibly missi
     const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
     assert.match(source, /missingValues = rowMetrics\.some\(row => row\.value === null\)/);
     assert.match(source, /snapshot\?\.health === 'partial' && missingValues/);
-    // RSS beside PSS is an upper bound, and the content height is never clamped below its children.
-    assert.match(source, /`≤\$\{bytes\(value\)\}`/);
+    assert.doesNotMatch(source, /≤/);
     assert.doesNotMatch(source, /Math\.min\(326/);
 });

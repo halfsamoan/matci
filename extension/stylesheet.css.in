@@ -46,7 +46,6 @@
 .matci-app-name { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; }
 .matci-app-icon { border-radius: 4px; }
 .matci-app-metric { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; font-feature-settings: "tnum"; }
-.matci-app-metric-approx { color: {{color.labelTertiary}}; }
 .matci-protected { color: {{color.accentWarning}}; font-size: {{typography.caption}}px; }
 .matci-review-row { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; }
 .matci-empty { color: {{color.labelSecondary}}; font-size: {{typography.secondary}}px; padding: 12px 0; }

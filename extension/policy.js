@@ -45,18 +45,24 @@ export function protection(group, snapshot, ownerUid, protectedIds = [], age = 0
 }
 
 // One value per app row, summed within a single metric kind. PSS splits shared pages and RSS
-// counts them whole (an upper bound): RSS is marked '≤' only when both are on screen.
+// counts them whole (an upper bound).
 export function appMetrics(groups) {
     const rows = groups.map(({processes}) => {
         const kinds = new Set(processes.map(p => p.metric_kind));
         const kind = kinds.size === 1 ? [...kinds][0] : null;
         const value = kind && processes.every(p => Number.isFinite(p.memory_bytes)) ?
             processes.reduce((sum, p) => sum + p.memory_bytes, 0) : null;
-        return {kind, value};
+        const coverage = kinds.size === 1 && processes.length &&
+            processes.every(p => p.coverage === 'complete') ? 'complete' : 'partial';
+        return {kind, value, coverage};
     });
     const shown = new Set(rows.filter(row => row.value !== null).map(row => row.kind));
     const mixed = shown.has('pss') && shown.has('rss');
     return rows.map(row => ({...row, approximate: mixed && row.kind === 'rss' && row.value !== null}));
+}
+
+export function lowAccuracy(row) {
+    return Boolean(row?.approximate) || row?.coverage !== 'complete' || (row?.kind ?? row?.metric_kind) === 'rss';
 }
 
 // Partial health has several causes (a process exiting mid-sample is enough), so it is not

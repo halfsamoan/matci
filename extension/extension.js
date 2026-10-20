@@ -10,10 +10,11 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
 import {DockParticipant, easeOnCurve} from './notchDock.js';
+import {isActorWithin} from './dockModel.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
-import {protection, appView, appMetrics, healthText, keyOf, interactionAge, takeLines} from './policy.js';
+import {protection, appView, appMetrics, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
 
 const MAX_LINE = 262144;
 // Widgets measured before their first style pass report short heights; style the tree first.
@@ -35,7 +36,7 @@ export default class Matci extends Extension {
         this._enabled = true;
         this._shellEnding = false;
         this._clearPendingRelogin();
-        this._generation = 0;
+        this._generation = (this._generation ?? 0) + 1;
         this._signals = [];
         this._pending = new Map();
         this._delays = new Map();
@@ -45,8 +46,19 @@ export default class Matci extends Extension {
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this._ownerUid = new Gio.Credentials().get_unix_user();
         this._snapshot = null;
+        this._panelSnapshot = null;
         this._receivedAt = 0;
+        this._detailPaused = false;
+        this._detailLoading = false;
+        this._detailError = false;
+        this._detailDesired = false;
+        this._detailCommandSupported = null;
+        this._detailRequestMode = null;
+        this._detailApplying = false;
+        this._detailInitialized = false;
+        this._actionStatus = null;
         this._expanded = false;
+        this._returnWindow = null;
         this._scrollView = null;
         this._rowButtons = new Map();
         this._roleButtons = new Map();
@@ -94,9 +106,13 @@ export default class Matci extends Extension {
         this._connect(this._indicator, 'button-press-event', toggle);
         this._connect(this._indicator, 'touch-event', (_actor, event) =>
             event.type() === Clutter.EventType.TOUCH_BEGIN ? toggle() : Clutter.EVENT_PROPAGATE);
-        this._connect(this._indicator, 'key-press-event', (_actor, event) =>
-            [Clutter.KEY_Return, Clutter.KEY_space, Clutter.KEY_KP_Enter].includes(event.get_key_symbol()) ?
-                toggle() : Clutter.EVENT_PROPAGATE);
+        this._connect(this._indicator, 'key-press-event', (_actor, event) => {
+            if (![Clutter.KEY_Return, Clutter.KEY_space, Clutter.KEY_KP_Enter].includes(event.get_key_symbol()))
+                return Clutter.EVENT_PROPAGATE;
+            toggle();
+            if (!this._expanded) this._indicator.grab_key_focus();
+            return Clutter.EVENT_STOP;
+        });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._dock = new DockParticipant({id: this.uuid, actor: this._surface, monitor: () => this._monitor(), order: 1,
             triggerActor: () => this._indicator,
@@ -119,10 +135,10 @@ export default class Matci extends Extension {
         this._connect(this._indicator, 'destroy', () => this._beginShellShutdown());
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
         this._connect(Main.panel, 'notify::height', () => this._visibility());
-        this._connect(Main.overview, 'showing', () => this._visibility());
+        this._connect(Main.overview, 'showing', () => this._onOverviewShowing());
         this._connect(Main.overview, 'hidden', () => this._visibility());
         this._connect(Main.sessionMode, 'updated', () => this._visibility());
-        this._connect(global.display, 'in-fullscreen-changed', () => this._visibility());
+        this._connect(global.display, 'in-fullscreen-changed', () => this._onFullscreenChanged());
         this._connect(this._settings, 'changed', (_s, key) => {
             this._actions.cancel(); this._selected.clear();
             this._suggestStart = null;
@@ -175,7 +191,7 @@ export default class Matci extends Extension {
     }
     _updatePanel() {
         if (!this._enabled || this._shellEnding) return;
-        const value = percent(this._snapshot?.memory?.used_ratio);
+        const value = percent((this._panelSnapshot ?? this._snapshot)?.memory?.used_ratio);
         this._indicatorLabel.text = this._versionMismatch ? '!' : value;
         this._indicatorIcon.icon_name = this._versionMismatch ? 'dialog-warning-symbolic' : 'utilities-system-monitor-symbolic';
         this._indicator.accessible_name = this._versionMismatch ? `matci 오류 · ${this._message}` :
@@ -191,18 +207,96 @@ export default class Matci extends Extension {
         // The coordinator owns visibility and placement, including collision fallback.
         this._dock.update({width, height, visible, expanded: this._expanded});
     }
+    _onOverviewShowing() {
+        if (this._expanded) this._collapse(false, {keepReview: true});
+        else this._visibility();
+    }
+    _onFullscreenChanged() {
+        if (this._settings.get_boolean('hide-fullscreen') && this._monitor()?.inFullscreen && this._expanded)
+            this._collapse(false, {keepReview: true});
+        else this._visibility();
+    }
     _expand(manual = false) {
         if (!this._dock.claim(manual ? 100 : 30)) return;
         if (manual && this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
-        this._expanded = true; this._render();
-        if (manual) this._root.grab_key_focus();
+        this._returnWindow = global.display.get_focus_window();
+        this._expanded = true;
+        this._setDetail(true);
+        if (manual && this._dock.state.visible) this._root.grab_key_focus();
+    }
+    _releaseFocus() {
+        const focus = global.stage.get_key_focus();
+        if (!isActorWithin(focus, this._root) && focus !== this._indicator) return;
+        global.stage.set_key_focus(null);
+        const win = this._returnWindow;
+        this._returnWindow = null;
+        if (win && !win.minimized && win.get_workspace?.() === global.workspace_manager.get_active_workspace())
+            win.focus(global.get_current_time());
     }
     _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
+        if (!this._actions?.busy) this._actionStatus = null;
         if (!keepReview) this._selected.clear();
         this._render();
-        if (restoreFocus) this._indicator.grab_key_focus();
+        if (restoreFocus) this._releaseFocus();
+        if (!this._actions?.review && !this._actions?.busy) this._setDetail(false);
+    }
+    async _setDetail(detail) {
+        this._detailDesired = detail;
+        if (detail && this._detailCommandSupported !== false) {
+            this._detailLoading = true;
+            this._detailError = false;
+        }
+        if (this._expanded) this._render();
+        if (this._detailCommandSupported === false) {
+            this._detailPaused = false;
+            this._detailLoading = false;
+            if (this._expanded) this._render();
+            return;
+        }
+        if (!this._worker || !this._session || this._detailApplying || this._detailRequestMode === detail) return;
+        const generation = this._generation;
+        this._detailApplying = true;
+        try {
+            while (generation === this._generation && this._worker && this._session &&
+                this._detailCommandSupported !== false && this._detailRequestMode !== this._detailDesired) {
+                const requested = this._detailDesired;
+                try {
+                    const response = await this._request('set_detail', {detail: requested});
+                    if (generation !== this._generation) return;
+                    this._detailCommandSupported = true;
+                    this._detailRequestMode = requested;
+                    if (this._detailDesired === requested) {
+                        this._detailPaused = response.warnings?.includes('PROCESS_DETAIL_PAUSED') ?? false;
+                        this._detailLoading = requested && this._detailPaused;
+                        if (!this._detailPaused) this._detailError = false;
+                    }
+                } catch (error) {
+                    if (generation !== this._generation) return;
+                    if (error?.message?.includes('COMMAND_NOT_SUPPORTED')) {
+                        this._detailCommandSupported = false;
+                        this._detailPaused = false;
+                        this._detailLoading = false;
+                        this._detailError = false;
+                    } else if (this._detailDesired === requested) {
+                        this._detailLoading = false;
+                        this._detailPaused = requested;
+                        this._detailError = requested;
+                        if (requested) this._message = '상세 프로세스 목록을 가져오지 못했습니다. 다시 시도하세요.';
+                        break;
+                    } else {
+                        // A stale command failed after the user changed visibility; retry the latest mode.
+                        this._detailRequestMode = null;
+                    }
+                }
+            }
+        } finally {
+            if (generation === this._generation) {
+                this._detailApplying = false;
+                if (this._expanded) this._render();
+            }
+        }
     }
     _label(text, style = 'matci-caption') {
         const label = new St.Label({text: String(text), style_class: style, x_expand: true});
@@ -245,12 +339,14 @@ export default class Matci extends Extension {
         return false;
     }
     _protection(group, snapshot) {
+        if (snapshot?.warnings?.includes('PROCESS_DETAIL_PAUSED')) return '상세 프로세스 관측이 일시 중지됨';
         return protection(group, snapshot, this._ownerUid, this._settings.get_strv('protected-app-ids'),
             snapshot === this._snapshot ? Math.max(0, this._now() - this._receivedAt) : 0);
     }
     _groups(snapshot) {
         // A demo sample must never touch Shell windows or contain a live window token.
-        if (!this._enabled || this._shellEnding || !snapshot || snapshot.mode !== 'live') return [];
+        if (!this._enabled || this._shellEnding || !snapshot || snapshot.mode !== 'live' ||
+            snapshot.warnings?.includes('PROCESS_DETAIL_PAUSED')) return [];
         const tracker = Shell.WindowTracker.get_default();
         const appSystem = Shell.AppSystem.get_default();
         const eventTime = global.get_current_time();
@@ -342,8 +438,10 @@ export default class Matci extends Extension {
         const opening = this._expanded && !this._renderedExpanded;
         this._updatePanel();
         const snapshot = this._snapshot;
-        const memory = snapshot?.memory;
+        const panelSnapshot = this._panelSnapshot ?? snapshot;
+        const memory = panelSnapshot?.memory;
         const demo = snapshot?.mode === 'demo';
+        const detailReady = Boolean(snapshot) && (demo || (!this._detailPaused && !this._detailLoading));
         const psi = snapshot?.pressure?.some_avg10;
         const surfaceWidth = Math.min(DESIGN.geometry.matciExpanded,
             Math.max(1, (this._monitor()?.width ?? 800) - 24));
@@ -416,11 +514,18 @@ export default class Matci extends Extension {
                 const processes = (snapshot?.processes ?? []).slice(0, 20);
                 const marks = appMetrics(processes.map(p => ({processes: [p]})));
                 for (const [index, p] of processes.entries()) {
-                    const row = this._label(`${p.comm ?? '시연 프로세스'} · ${marks[index].approximate ? '≤' : ''}${bytes(p.memory_bytes)}`,
+                    const partial = lowAccuracy({...marks[index], kind: p.metric_kind, coverage: p.coverage});
+                    const row = this._label(`${p.comm ?? '시연 프로세스'} · ${bytes(p.memory_bytes)}`,
                         'matci-review-row');
-                    row.accessible_name = `${p.comm ?? '시연 프로세스'}, ${bytes(p.memory_bytes)}, ${metricKind(p.metric_kind)}`;
+                    row.accessible_name = `${p.comm ?? '시연 프로세스'}, ${bytes(p.memory_bytes)}, ${metricKind(p.metric_kind)}` +
+                        `${partial ? ', 부분 측정' : ''}`;
                     list.add_child(row);
                 }
+            } else if (!detailReady) {
+                const detailMessage = !snapshot ? this._message : this._detailError ?
+                    '상세 앱 목록을 가져오지 못함 · 다시 열어 재시도하세요' : '상세 앱 목록 불러오는 중';
+                list.add_child(this._label(detailMessage,
+                    !snapshot || this._detailError ? 'matci-status-error' : 'matci-status'));
             } else {
                 const groups = this._groups(snapshot);
                 const rowMetrics = appMetrics(groups);
@@ -434,7 +539,8 @@ export default class Matci extends Extension {
                 for (const [index, group] of groups.entries()) {
                     const reason = this._protection(group, snapshot);
                     if (reason) this._selected.delete(group.appId);
-                    const {kind, value, approximate} = rowMetrics[index];
+                    const {kind, value, coverage, approximate} = rowMetrics[index];
+                    const partial = lowAccuracy({kind, coverage, approximate});
                     const ages = group.processes.map(p => p.metric_age_ms);
                     const age = ages.length && ages.every(Number.isFinite) ?
                         `${Math.round(Math.max(...ages) / 1000)}초 전 관측` : '관측 시각 미확인';
@@ -446,7 +552,7 @@ export default class Matci extends Extension {
                         x_expand: true, can_focus: !this._actions.busy, reactive: !this._actions.busy,
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
                             `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}, ` +
-                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}`});
+                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}${partial ? ', 부분 측정' : ''}`});
                     select._matciAppId = group.appId;
                     // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
                     select.connect('key-focus-in', () => {
@@ -469,14 +575,14 @@ export default class Matci extends Extension {
                     if (reason) appContent.add_child(new St.Icon({icon_name: 'changes-prevent-symbolic', icon_size: 14}));
                     if (selected) appContent.add_child(new St.Icon({icon_name: 'object-select-symbolic',
                         style_class: 'matci-selected-check', icon_size: 14}));
-                    // RSS beside PSS includes shared memory and reads larger: marked and dimmed.
-                    const metricLabel = approximate ? this._label(`≤${bytes(value)}`, 'matci-app-metric matci-app-metric-approx') :
-                        this._label(bytes(value), 'matci-app-metric');
+                    // The visible value stays plain; accuracy context remains in its accessible name.
+                    const metricLabel = this._label(bytes(value), 'matci-app-metric');
                     metricLabel.x_expand = false;
                     appContent.add_child(metricLabel);
                     select.set_child(appContent);
                     select.connect('clicked', () => {
-                        if (reason) return;
+                        if (reason || !detailReady || this._detailLoading || this._detailPaused) return;
+                        if (this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
                         if (this._selected.has(group.appId)) this._selected.delete(group.appId); else this._selected.add(group.appId);
                         this._render();
                     });
@@ -489,7 +595,9 @@ export default class Matci extends Extension {
                 const actionText = this._actionStatus === 'observing' ? '요청됨 · 창 상태 확인 중' :
                     this._actionStatus === 'completed' ? '창 닫힘 · RAM 재측정' : this._message;
                 list.add_child(this._label(actionText, 'matci-status'));
-            } else if (this._versionMismatch || snapshot?.health === 'error') {
+            } else if (!detailReady) {
+                // The list above already explains why app controls are unavailable.
+            } else if (this._detailError || this._versionMismatch || snapshot?.health === 'error') {
                 list.add_child(this._label(this._message, 'matci-status-error'));
             } else if (snapshot?.health === 'partial' && missingValues) {
                 // Partial health only earns a line when it is visible: a row without a value.
@@ -514,9 +622,9 @@ export default class Matci extends Extension {
                 if (needsRefresh) controls.add_child(this._iconButton('view-refresh-symbolic', 'RAM 새로고침',
                     () => this._refresh(), !this._actions.busy, 'refresh'));
                 controls.add_child(new St.Widget({x_expand: true}));
-                if (!demo && this._selected.size > 0) {
+                if (!demo && detailReady && this._selected.size > 0) {
                     const reviewButton = this._button(`검토 ${this._selected.size}`, () => this._review(),
-                        !this._actions.busy);
+                        !this._actions.busy && detailReady);
                     reviewButton.add_style_class_name('matci-primary-button');
                     this._tagRole(reviewButton, 'review');
                     controls.add_child(reviewButton);
@@ -583,6 +691,7 @@ export default class Matci extends Extension {
         }
     }
     _review() {
+        if (!this._snapshot || this._detailLoading || this._detailPaused || this._actions.busy) return;
         if (!this._dock.claim(100)) return;
         try {
             this._actions.prepare(this._groups(this._snapshot).filter(g => this._selected.has(g.appId)));
@@ -618,7 +727,9 @@ export default class Matci extends Extension {
             this._message = '메모리 사용이 30초 이상 높습니다. 확인을 제안합니다. 자동으로 앱을 닫지 않습니다.';
             this._expand(false); // Priority 30 cannot steal a manual review or keyboard focus.
             if (this._expanded) this._eventTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 6000, () => {
-                this._eventTimer = 0; if (!this._actions.review && !this._actions.busy) this._collapse(); return GLib.SOURCE_REMOVE;
+                this._eventTimer = 0;
+                if (!this._actions.review && !this._actions.busy && !this._selected.size) this._collapse();
+                return GLib.SOURCE_REMOVE;
             });
         }
     }
@@ -627,6 +738,14 @@ export default class Matci extends Extension {
         const generation = ++this._generation;
         this._cancellable = new Gio.Cancellable();
         this._session = null;
+        this._detailDesired = this._expanded;
+        this._detailPaused = false;
+        this._detailLoading = this._expanded;
+        this._detailError = false;
+        this._detailCommandSupported = null;
+        this._detailRequestMode = null;
+        this._detailApplying = false;
+        this._detailInitialized = false;
         this._versionMismatch = false;
         this._stdout = {text: '', bytes: 0};
         this._decoder = new TextDecoder();
@@ -672,16 +791,31 @@ export default class Matci extends Extension {
                 message.mode !== this._settings.get_string('mode')) throw new Error('snapshot');
             if (this._session && message.session_id !== this._session) throw new Error('session changed');
             this._session = message.session_id;
-            this._snapshot = message;
+            const firstSnapshot = !this._detailInitialized;
+            this._detailInitialized = true;
+            const detailPaused = message.warnings?.includes('PROCESS_DETAIL_PAUSED') ?? false;
+            this._panelSnapshot = message;
+            if (!detailPaused) this._snapshot = message;
+            this._detailPaused = detailPaused;
+            if (detailPaused && this._detailDesired) this._detailLoading = true;
+            else if (detailPaused) {
+                this._detailLoading = false;
+                this._detailError = false;
+            }
+            else if (!detailPaused && this._detailDesired) {
+                this._detailLoading = false;
+                this._detailError = false;
+            }
             this._updatePanel();
-            this._receivedAt = this._now();
+            if (!detailPaused) this._receivedAt = this._now();
             if (++this._goodSamples >= 3) this._failures = 0;
-            if (!this._actions.busy && !this._actions.review && !this._versionMismatch) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :
+            if (!this._detailError && !this._actions.busy && !this._actions.review && !this._versionMismatch) this._message = message.mode === 'demo' ? '합성 시연 · 실제 메모리/앱 제어 아님' :
                 healthText(message);
             this._suggest(message);
+            if (firstSnapshot) this._setDetail(this._detailDesired);
             // Preserve keyboard focus on confirmation and observation controls.
             // Fresh samples still replace the underlying identity for close checks.
-            if (!this._actions.review && !this._actions.busy) this._render();
+            if (!this._actions.review && !this._actions.busy && (!detailPaused || this._expanded)) this._render();
         } else if (message.type === 'error' && !message.request_id && !this._session) {
             const errorText = {
                 WORKER_ALREADY_RUNNING: '다른 matci 관측기가 실행 중입니다 · 이전 세션 프로세스를 확인하세요',
@@ -769,7 +903,10 @@ export default class Matci extends Extension {
         try { this._worker?.force_exit(); } catch (_error) {}
         this._worker = this._input = this._output = this._cancellable = null;
         this._snapshot = this._session = null;
+        this._panelSnapshot = null;
         this._queue = []; this._writing = false; this._stdout = null;
+        this._detailPaused = false; this._detailLoading = false; this._detailError = false;
+        this._detailRequestMode = null; this._detailInitialized = false; this._detailApplying = false;
         this._suggestStart = null; this._suggestArmed = true; this._suggestCooldown = 0;
     }
     disable() {
