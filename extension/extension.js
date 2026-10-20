@@ -10,6 +10,7 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
 import {DockParticipant, easeOnCurve} from './notchDock.js';
+import {isActorWithin} from './dockModel.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
@@ -48,6 +49,7 @@ export default class Matci extends Extension {
         this._receivedAt = 0;
         this._actionStatus = null;
         this._expanded = false;
+        this._returnWindow = null;
         this._scrollView = null;
         this._rowButtons = new Map();
         this._roleButtons = new Map();
@@ -66,7 +68,7 @@ export default class Matci extends Extension {
             accessible_name: 'matci 메모리 노치'});
         this._root.connect('key-press-event', (_actor, event) => {
             if (event.get_key_symbol() === Clutter.KEY_Escape) {
-                this._collapse(true); return Clutter.EVENT_STOP;
+                this._collapse(); return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -89,21 +91,25 @@ export default class Matci extends Extension {
         panelStatus.add_child(this._indicatorLabel);
         this._indicator.add_child(panelStatus);
         const toggle = () => {
-            if (this._expanded) this._collapse(true); else this._expand(true);
+            if (this._expanded) this._collapse(); else this._expand(true);
             return Clutter.EVENT_STOP;
         };
         this._connect(this._indicator, 'button-press-event', toggle);
         this._connect(this._indicator, 'touch-event', (_actor, event) =>
             event.type() === Clutter.EventType.TOUCH_BEGIN ? toggle() : Clutter.EVENT_PROPAGATE);
-        this._connect(this._indicator, 'key-press-event', (_actor, event) =>
-            [Clutter.KEY_Return, Clutter.KEY_space, Clutter.KEY_KP_Enter].includes(event.get_key_symbol()) ?
-                toggle() : Clutter.EVENT_PROPAGATE);
+        this._connect(this._indicator, 'key-press-event', (_actor, event) => {
+            if (![Clutter.KEY_Return, Clutter.KEY_space, Clutter.KEY_KP_Enter].includes(event.get_key_symbol()))
+                return Clutter.EVENT_PROPAGATE;
+            toggle();
+            if (!this._expanded) this._indicator.grab_key_focus();
+            return Clutter.EVENT_STOP;
+        });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._dock = new DockParticipant({id: this.uuid, actor: this._surface, monitor: () => this._monitor(), order: 1,
             triggerActor: () => this._indicator,
             onShellShutdown: () => this._beginShellShutdown(),
-            onOutside: () => this._collapse(false, {keepReview: true}),
-            onYield: () => this._collapse(false, {keepReview: true})});
+            onOutside: () => this._collapse({keepReview: true}),
+            onYield: () => this._collapse({keepReview: true})});
         // Global shortcut (numpad Delete/Decimal by default). The Shell grab keeps the key from apps.
         Main.wm.addKeybinding('matci-toggle-shortcut', this._settings, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
             Shell.ActionMode.NORMAL, toggle);
@@ -195,16 +201,26 @@ export default class Matci extends Extension {
     _expand(manual = false) {
         if (!this._dock.claim(manual ? 100 : 30)) return;
         if (manual && this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
+        this._returnWindow = global.display.get_focus_window();
         this._expanded = true; this._render();
-        if (manual) this._root.grab_key_focus();
+        if (manual && this._dock.state.visible) this._root.grab_key_focus();
     }
-    _collapse(restoreFocus = false, {keepReview = false} = {}) {
+    _releaseFocus() {
+        const focus = global.stage.get_key_focus();
+        if (!isActorWithin(focus, this._root) && focus !== this._indicator) return;
+        global.stage.set_key_focus(null);
+        const win = this._returnWindow;
+        this._returnWindow = null;
+        if (win && !win.minimized && win.get_workspace?.() === global.workspace_manager.get_active_workspace())
+            win.focus(global.get_current_time());
+    }
+    _collapse({keepReview = false} = {}) {
         this._expanded = false;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
         if (!this._actions?.busy) this._actionStatus = null;
         if (!keepReview) this._selected.clear();
         this._render();
-        if (restoreFocus) this._indicator.grab_key_focus();
+        this._releaseFocus();
     }
     _label(text, style = 'matci-caption') {
         const label = new St.Label({text: String(text), style_class: style, x_expand: true});
@@ -367,7 +383,7 @@ export default class Matci extends Extension {
             header.add_child(brand);
             const tools = new St.BoxLayout({style_class: 'matci-header-tools'});
             tools.add_child(this._iconButton('preferences-system-symbolic', '설정', () => this._openPreferences(), true, 'settings'));
-            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(true), true, 'collapse'));
+            tools.add_child(this._iconButton('pan-up-symbolic', '접기', () => this._collapse(), true, 'collapse'));
             header.add_child(tools);
             this._root.add_child(header);
 
