@@ -9,6 +9,10 @@ const extensionSource = readFileSync(new URL('../extension/extension.js', import
 const proc = {uid: 1000, pid: 42, start_ticks: 8, identity_observed_monotonic_ms: 100};
 const sample = {mode: 'live', sample_id: 'a', monotonic_ms: 100, processes: [proc]};
 const group = {appId: 'org.gnome.Calculator.desktop', processes: [proc], windows: [{}]};
+test('re-enable keeps worker generations monotonic', () => {
+    assert.match(extensionSource, /this\._generation = \(this\._generation \?\? 0\) \+ 1;/);
+    assert.doesNotMatch(extensionSource, /this\._generation = 0;/);
+});
 test('input-age hints handle short uint32 wrap and reject unknown/backward/old baselines', () => {
     assert.equal(interactionAge(1200, 2200, 1000), 1000);
     assert.equal(interactionAge(0xfffffff0, 20, 0xffffffe0), 36);

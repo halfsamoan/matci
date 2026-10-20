@@ -35,7 +35,7 @@ export default class Matci extends Extension {
         this._enabled = true;
         this._shellEnding = false;
         this._clearPendingRelogin();
-        this._generation = 0;
+        this._generation = (this._generation ?? 0) + 1;
         this._signals = [];
         this._pending = new Map();
         this._delays = new Map();
