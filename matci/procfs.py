@@ -275,3 +275,42 @@ class ProcCollector:
                 'monotonic_ms': now, 'boot_id': boot_id, 'health': health, 'memory': memory,
                 'pressure': pressure, 'processes': processes, 'warnings': warnings,
                 'truncated': truncated}
+
+    def sample_light(self, session_id):
+        """Read system memory signals only; do not enumerate /proc processes."""
+        now = self.clock()
+        warnings = []
+        try:
+            memory = parse_meminfo(read_text(self.root / 'meminfo'))
+            health = 'ok'
+        except (OSError, ValueError):
+            memory = {'total_bytes': None, 'available_bytes': None, 'used_ratio': None,
+                      'definition': 'MemTotal minus MemAvailable'}
+            health = 'error'
+            warnings.append('MEMORY_UNAVAILABLE')
+        memory.update(observed_monotonic_ms=now if health != 'error' else None,
+                      age_ms=0 if health != 'error' else None)
+        try:
+            pressure = parse_pressure(read_text(self.root / 'pressure/memory'))
+        except (OSError, ValueError):
+            pressure = {'some_avg10': None, 'full_avg10': None, 'availability': 'unavailable'}
+            warnings.append('PSI_UNAVAILABLE')
+        try:
+            boot_id = read_text(self.root / 'sys/kernel/random/boot_id', 128).strip()
+            if not boot_id or len(boot_id) > 64:
+                raise ValueError('invalid boot id')
+        except (OSError, ValueError):
+            boot_id = 'unavailable'
+            warnings.append('BOOT_ID_UNAVAILABLE')
+        if boot_id != self.boot_id:
+            self.previous.clear()
+            self.pss_cache.clear()
+            self.pss_fail_cache.clear()
+            self.boot_id = boot_id
+        warnings.append('PROCESS_DETAIL_PAUSED')
+        if health == 'ok' and any(warning != 'PSI_UNAVAILABLE' for warning in warnings):
+            health = 'partial'
+        return {'schema_version': 1, 'type': 'snapshot', 'mode': 'live',
+                'sample_id': new_id(), 'session_id': session_id, 'sampled_at': utc_now(),
+                'monotonic_ms': now, 'boot_id': boot_id, 'health': health, 'memory': memory,
+                'pressure': pressure, 'processes': [], 'warnings': warnings, 'truncated': False}

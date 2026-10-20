@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -6,6 +7,8 @@ from unittest.mock import patch
 from matci import procfs as procfs_module
 from matci.policy import aggregate, classify
 from matci.procfs import ProcCollector, parse_meminfo, parse_pressure, parse_stat, parse_status_uid
+from matci.store import Store
+from matci.worker import Worker
 
 
 def stat_line(pid, comm='chrome', ppid=1, ticks=100, start=200, pages=50):
@@ -278,6 +281,36 @@ class ProcFixtureTests(unittest.TestCase):
         self.assertEqual(sample['health'], 'ok')
         self.assertEqual(self.collector.pss_cache, {})
         self.assertEqual(self.collector.pss_fail_cache, {})
+
+    def test_light_sample_reads_only_system_files(self):
+        self.process()
+        with patch.object(Path, 'iterdir', side_effect=AssertionError('process list must not be scanned')):
+            sample = self.collector.sample_light('fixture-session')
+        self.assertEqual(sample['processes'], [])
+        self.assertFalse(sample['truncated'])
+        self.assertIn('PROCESS_DETAIL_PAUSED', sample['warnings'])
+        self.assertEqual(sample['health'], 'partial')
+
+    def test_cpu_baseline_cleared_after_light_period(self):
+        self.process()
+        store = Store(self.root / 'state', uid=1000)
+        self.addCleanup(store.close)
+        worker = Worker(self.collector, store, 'live')
+        first = worker.sample()
+        self.assertIsNone(first['processes'][0]['cpu_fraction_one_core'])
+        self.assertTrue(self.collector.previous)
+
+        def command(detail, request_id):
+            return worker.handle_line(json.dumps({'schema_version': 1, 'type': 'set_detail',
+                'request_id': request_id, 'session_id': worker.session_id, 'detail': detail}).encode())
+
+        self.now += 1000
+        light = command(False, 'detail-off')
+        self.assertIn('PROCESS_DETAIL_PAUSED', light['warnings'])
+        self.assertEqual(self.collector.previous, {})
+        self.now += 1000
+        resumed = command(True, 'detail-on')
+        self.assertIsNone(resumed['processes'][0]['cpu_fraction_one_core'])
 
 
 class ParserPolicyTests(unittest.TestCase):

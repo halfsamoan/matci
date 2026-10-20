@@ -74,6 +74,39 @@ test('CLI accepts an exact UI version from installed extension metadata', () => 
     }
 });
 
+test('worker switches between detail and light snapshots over JSONL', {timeout: 15000}, async t => {
+    const child = spawn(process.env.MATCI_PYTHON ?? 'python3', ['-u', '-c', HARNESS], {
+        cwd: fileURLToPath(new URL('../', import.meta.url)), stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let stderr = ''; child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-2000); });
+    const lines = createInterface({input: child.stdout})[Symbol.asyncIterator]();
+    t.after(() => { child.stdin.end(); child.kill(); });
+    const read = async () => {
+        const result = await lines.next();
+        assert.equal(result.done, false, stderr || 'worker ended');
+        return JSON.parse(result.value);
+    };
+    let snapshot = await read();
+    const setDetail = async detail => {
+        const message = {schema_version: 1, type: 'set_detail', request_id: randomUUID(),
+            session_id: snapshot.session_id, detail};
+        child.stdin.write(`${JSON.stringify({now: snapshot.monotonic_ms + 1000, closed: false, message})}\n`);
+        return read();
+    };
+    const light = await setDetail(false);
+    assert.equal(light.type, 'snapshot');
+    assert.equal(light.processes.length, 0);
+    assert.equal(light.truncated, false);
+    assert.ok(light.warnings.includes('PROCESS_DETAIL_PAUSED'));
+    snapshot = light;
+    const full = await setDetail(true);
+    assert.equal(full.type, 'snapshot');
+    assert.ok(full.processes.length > 0);
+    assert.equal(full.warnings.includes('PROCESS_DETAIL_PAUSED'), false);
+    child.stdin.end();
+    await new Promise((resolve, reject) => { child.once('exit', code => code === 0 ? resolve() : reject(new Error(stderr))); });
+});
+
 test('JS close gate and Python Worker persist requested before synthetic close and final observed delta', {timeout: 15000}, async t => {
     const child = spawn(process.env.MATCI_PYTHON ?? 'python3', ['-u', '-c', HARNESS], {
         cwd: fileURLToPath(new URL('../', import.meta.url)), stdio: ['pipe', 'pipe', 'pipe'],

@@ -108,7 +108,10 @@ def main(argv=None):
                     break
                 response = worker.error('MESSAGE_TOO_LARGE') if line is False else worker.handle_line(line)
                 emit(response)
-                next_sample = next_deadline(response, time.monotonic(), args.interval, next_sample)
+                interval = worker.next_sample_delay or args.interval
+                next_sample = next_deadline(response, time.monotonic(), interval, next_sample)
+                if response.get('type') == 'snapshot':
+                    worker.next_sample_delay = None
                 if time.monotonic() >= next_sample:
                     emit(periodic_sample(worker))
                     next_sample = time.monotonic() + args.interval

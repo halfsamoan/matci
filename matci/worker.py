@@ -57,13 +57,28 @@ class Worker:
         self.requests = OrderedDict()
         self.views = {}
         self.last_sample_request = None
+        self.detail = True
+        self.next_sample_delay = None
 
     @property
     def current_sample(self):
         return next(reversed(self.samples.values())) if self.samples else None
 
     def sample(self, request_id=None):
-        snapshot = self.collector.sample(self.session_id)
+        if self.detail:
+            snapshot = self.collector.sample(self.session_id)
+        else:
+            sample_light = getattr(self.collector, 'sample_light', None)
+            snapshot = sample_light(self.session_id) if callable(sample_light) else self.collector.sample(self.session_id)
+            snapshot = dict(snapshot)
+            snapshot['processes'] = []
+            snapshot['truncated'] = False
+            warnings = list(snapshot.get('warnings', []))
+            if 'PROCESS_DETAIL_PAUSED' not in warnings:
+                warnings.append('PROCESS_DETAIL_PAUSED')
+            snapshot['warnings'] = warnings
+            if snapshot.get('health') == 'ok':
+                snapshot['health'] = 'partial'
         require(snapshot['mode'] == self.mode, 'COLLECTOR_MODE_MISMATCH')
         previous = self.current_sample
         if previous is not None:
@@ -103,7 +118,7 @@ class Worker:
         require(valid_id(request_id), 'REQUEST_ID')
         require(message.get('session_id') == self.session_id, 'SESSION_MISMATCH')
         kind = message.get('type')
-        require(kind in ('sample_now', 'record_app_view', 'record_receipt'), 'COMMAND_NOT_SUPPORTED')
+        require(kind in ('sample_now', 'set_detail', 'record_app_view', 'record_receipt'), 'COMMAND_NOT_SUPPORTED')
         import hashlib  # Lazy: OpenSSL-backed hashlib adds ~4 MB RSS before any request arrives.
         fingerprint = hashlib.sha256(json.dumps(message, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
         if request_id in self.requests:
@@ -116,10 +131,22 @@ class Worker:
             require(self.last_sample_request is None or now - self.last_sample_request >= 250, 'RATE_LIMITED')
             response = self.sample(request_id)
             self.last_sample_request = now
+        elif kind == 'set_detail':
+            require(set(message) <= {'schema_version', 'type', 'request_id', 'session_id', 'detail'}, 'UNKNOWN_FIELD')
+            detail = message.get('detail')
+            require(type(detail) is bool, 'DETAIL')
+            if self.detail and not detail:
+                previous = getattr(self.collector, 'previous', None)
+                if hasattr(previous, 'clear'):
+                    previous.clear()
+            self.detail = detail
+            response = self.sample(request_id)
+            self.next_sample_delay = 1.0 if detail else None
         else:
             sample_id = message.get('sample_id')
             require(valid_id(sample_id) and sample_id in self.samples, 'SAMPLE_NOT_CURRENT_SESSION')
             sample = self.samples[sample_id]
+            require('PROCESS_DETAIL_PAUSED' not in sample.get('warnings', []), 'SAMPLE_DETAIL_PAUSED')
             if kind == 'record_app_view':
                 require(sample is self.current_sample, 'STALE_SAMPLE')
                 response = self.record_apps(message, sample)

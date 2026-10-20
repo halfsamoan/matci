@@ -106,6 +106,41 @@ class WorkerContractTests(unittest.TestCase):
                                               (self.snapshot['sample_id'],)).fetchone()[0]
         self.assertEqual(count, 1)
 
+    def test_default_detail_true_unchanged(self):
+        self.assertTrue(self.worker.detail)
+        self.assertEqual(len(self.snapshot['processes']), 1)
+        self.assertNotIn('PROCESS_DETAIL_PAUSED', self.snapshot['warnings'])
+
+    def test_set_detail_false_sends_light_snapshot(self):
+        request = self.message('set_detail', detail=False)
+        response = self.send(request)
+        self.assertEqual(response['type'], 'snapshot')
+        self.assertEqual(response['request_id'], request['request_id'])
+        self.assertEqual(response['processes'], [])
+        self.assertFalse(response['truncated'])
+        self.assertIn('PROCESS_DETAIL_PAUSED', response['warnings'])
+        self.assertEqual(response['health'], 'partial')
+
+    def test_set_detail_true_returns_full_and_schedules_1s(self):
+        self.send(self.message('set_detail', detail=False))
+        response = self.send(self.message('set_detail', detail=True))
+        self.assertEqual(response['type'], 'snapshot')
+        self.assertEqual(len(response['processes']), 1)
+        self.assertNotIn('PROCESS_DETAIL_PAUSED', response['warnings'])
+        self.assertEqual(self.worker.next_sample_delay, 1.0)
+
+    def test_light_sample_rejected_for_actions(self):
+        light = self.send(self.message('set_detail', detail=False))
+        self.assertEqual(self.send(self.view(sample_id=light['sample_id']))['code'], 'SAMPLE_DETAIL_PAUSED')
+        self.assertEqual(self.send(self.receipt(sample_id=light['sample_id']))['code'], 'SAMPLE_DETAIL_PAUSED')
+
+    def test_set_detail_unknown_field_and_type(self):
+        wrong_type = self.send(self.message('set_detail', detail=1))
+        self.assertEqual(wrong_type['code'], 'DETAIL')
+        unknown = self.send(self.message('set_detail', detail=False, unexpected=True))
+        self.assertEqual(unknown['code'], 'UNKNOWN_FIELD')
+        self.assertTrue(self.worker.detail)
+
     def test_authoritative_app_bytes_and_builtin_mirror(self):
         ack = self.send(self.view())
         self.assertEqual(ack['type'], 'ack')
