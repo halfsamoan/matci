@@ -7,6 +7,10 @@ import re
 from .model import MAX_PROCESSES, monotonic_ms, new_id, utc_now, process_key
 from .policy import builtin_process_reason
 
+PSS_BUDGET = 20
+PSS_TTL_MS = 30000
+PSS_FAIL_TTL_MS = 60000
+
 
 def parse_meminfo(text):
     fields = {}
@@ -98,6 +102,7 @@ class ProcCollector:
         self.clock_ticks = clock_ticks or os.sysconf('SC_CLK_TCK')
         self.previous = {}
         self.pss_cache = {}
+        self.pss_fail_cache = {}
         self.boot_id = None
 
     def sample(self, session_id):
@@ -128,8 +133,9 @@ class ProcCollector:
         if boot_id != self.boot_id:
             self.previous.clear()
             self.pss_cache.clear()
+            self.pss_fail_cache.clear()
             self.boot_id = boot_id
-        processes, new_previous, pss_count = [], {}, 0
+        processes, new_previous, pss_candidates = [], {}, []
         truncated, inaccessible = False, False
         try:
             entries = sorted((p for p in self.root.iterdir() if p.name.isdecimal()),
@@ -153,19 +159,16 @@ class ProcCollector:
                 if previous and now > previous[0] and stat['cpu_ticks'] >= previous[1]:
                     cpu = ((stat['cpu_ticks'] - previous[1]) / self.clock_ticks /
                            ((now - previous[0]) / 1000))
-                kind, amount, metric_time = 'rss', stat['rss_pages'] * self.page_size, now
+                rss_bytes = stat['rss_pages'] * self.page_size
+                kind, amount, metric_time = 'rss', rss_bytes, now
                 cached = self.pss_cache.get(key)
-                if cached and 0 <= now - cached[0] < 10000:
+                if cached and 0 <= now - cached[0] < PSS_TTL_MS:
                     kind, amount, metric_time = 'pss', cached[1], cached[0]
-                elif pss_count < 20:
-                    pss_count += 1
-                    try:
-                        amount = parse_pss(read_text(entry / 'smaps_rollup'))
-                        kind = 'pss'
-                        self.pss_cache[key] = (now, amount)
-                    except (OSError, ValueError):
-                        pass
-                # Recheck identity after potentially slow smaps reading.
+                else:
+                    failed_at = self.pss_fail_cache.get(key)
+                    if not (failed_at is not None and 0 <= now - failed_at < PSS_FAIL_TTL_MS):
+                        pss_candidates.append((rss_bytes, stat['pid'], key, entry, uid, stat))
+                # Recheck identity before accepting the process into this sample.
                 after = parse_stat(read_text(entry / 'stat', 8192))
                 after_uid = parse_status_uid(read_text(entry / 'status', 65536))
                 if after['start_ticks'] != stat['start_ticks']:
@@ -188,6 +191,68 @@ class ProcCollector:
                 continue
             except (OSError, ValueError):
                 inaccessible = True
+
+        # Spend the bounded PSS budget on the largest uncached RSS processes.
+        selected = sorted(pss_candidates, key=lambda item: (-item[0], item[1]))[:PSS_BUDGET]
+        by_key = {process_key(process): process for process in processes}
+        for _rss_bytes, _pid, key, entry, uid, original_stat in selected:
+            process = by_key.get(key)
+            if process is None:
+                continue
+            try:
+                amount = parse_pss(read_text(entry / 'smaps_rollup'))
+            except (FileNotFoundError, ProcessLookupError):
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            except (PermissionError, ValueError):
+                # PSS is optional: retain RSS and avoid retrying on every sample.
+                self.pss_fail_cache[key] = now
+                continue
+            except OSError:
+                inaccessible = True
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            try:
+                after = parse_stat(read_text(entry / 'stat', 8192))
+                after_uid = parse_status_uid(read_text(entry / 'status', 65536))
+            except (FileNotFoundError, ProcessLookupError):
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            except (OSError, ValueError):
+                inaccessible = True
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            if after['start_ticks'] != original_stat['start_ticks']:
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            if after_uid != uid:
+                inaccessible = True
+                processes.remove(process)
+                new_previous.pop(key, None)
+                self.pss_cache.pop(key, None)
+                self.pss_fail_cache.pop(key, None)
+                continue
+            process['metric_kind'] = 'pss'
+            process['memory_bytes'] = amount
+            process['metric_observed_monotonic_ms'] = now
+            process['metric_age_ms'] = 0
+            self.pss_cache[key] = (now, amount)
+            self.pss_fail_cache.pop(key, None)
         by_pid = {p['pid']: p for p in processes}
         for process in processes:
             if process['protection_reason'] or (process['cpu_fraction_one_core'] or 0) > 0.02:
@@ -198,6 +263,7 @@ class ProcCollector:
                     parent = by_pid.get(parent['ppid'])
         self.previous = new_previous
         self.pss_cache = {key: value for key, value in self.pss_cache.items() if key in new_previous}
+        self.pss_fail_cache = {key: value for key, value in self.pss_fail_cache.items() if key in new_previous}
         if inaccessible:
             warnings.append('PROCESS_COVERAGE_PARTIAL')
         if truncated:

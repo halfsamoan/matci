@@ -26,13 +26,15 @@ class ProcFixtureTests(unittest.TestCase):
         self.collector = ProcCollector(self.root, uid=1000, clock=lambda: self.now,
                                        page_size=4096, clock_ticks=100)
 
-    def process(self, pid=10, uid=1000, comm='chrome', ppid=1, ticks=100, start=200, pss=True):
+    def process(self, pid=10, uid=1000, comm='chrome', ppid=1, ticks=100, start=200, pages=50, pss=True):
         directory = self.root / str(pid)
         directory.mkdir(exist_ok=True)
         (directory / 'status').write_text(f'Uid:\t{uid}\t{uid}\t{uid}\t{uid}\n')
-        (directory / 'stat').write_text(stat_line(pid, comm, ppid, ticks, start))
+        (directory / 'stat').write_text(stat_line(pid, comm, ppid, ticks, start, pages))
         if pss:
             (directory / 'smaps_rollup').write_text('Pss: 123 kB\n')
+        else:
+            (directory / 'smaps_rollup').write_text('Pss: unavailable\n')
         return directory
 
     def sample(self):
@@ -66,7 +68,6 @@ class ProcFixtureTests(unittest.TestCase):
         self.sample()
         self.now += 5000
         directory = self.process(start=201, pss=False)
-        (directory / 'smaps_rollup').unlink()
         process = self.sample()['processes'][0]
         self.assertIsNone(process['cpu_fraction_one_core'])
         self.assertEqual(process['metric_kind'], 'rss')
@@ -182,6 +183,101 @@ class ProcFixtureTests(unittest.TestCase):
         self.assertEqual(len(sample['processes']), 256)
         self.assertTrue(sample['truncated'])
         self.assertEqual(sum(p['metric_kind'] == 'pss' for p in sample['processes']), 20)
+
+    def test_pss_budget_prefers_largest_rss(self):
+        for pid in range(10, 36):
+            self.process(pid=pid, pages=1000 - pid)
+        sample = self.sample()
+        pss_pids = {process['pid'] for process in sample['processes'] if process['metric_kind'] == 'pss'}
+        self.assertEqual(pss_pids, set(range(10, 30)))
+
+    def test_pss_budget_limit_per_sample(self):
+        for pid in range(10, 40):
+            self.process(pid=pid, pages=1000 - pid)
+        original = procfs_module.read_text
+        smaps_reads = 0
+
+        def count_smaps(path, limit=128 * 1024):
+            nonlocal smaps_reads
+            if path.name == 'smaps_rollup':
+                smaps_reads += 1
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=count_smaps):
+            self.sample()
+        self.assertLessEqual(smaps_reads, 20)
+
+    def test_pss_cache_ttl_30s(self):
+        self.process()
+        original = procfs_module.read_text
+        smaps_reads = 0
+
+        def count_smaps(path, limit=128 * 1024):
+            nonlocal smaps_reads
+            if path.name == 'smaps_rollup':
+                smaps_reads += 1
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=count_smaps):
+            first = self.sample()['processes'][0]
+            self.now += 29999
+            fresh = self.sample()['processes'][0]
+            self.now += 1
+            renewed = self.sample()['processes'][0]
+        self.assertEqual(smaps_reads, 2)
+        self.assertEqual(fresh['metric_age_ms'], 29999)
+        self.assertEqual(renewed['metric_age_ms'], 0)
+        self.assertEqual(first['metric_kind'], 'pss')
+
+    def test_pss_permission_failure_cached_60s(self):
+        directory = self.process()
+        original = procfs_module.read_text
+        smaps_reads = 0
+
+        def deny_smaps(path, limit=128 * 1024):
+            nonlocal smaps_reads
+            if path == directory / 'smaps_rollup':
+                smaps_reads += 1
+                raise PermissionError()
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=deny_smaps):
+            first = self.sample()
+            self.now += 59999
+            cached_failure = self.sample()
+            self.now += 1
+            retried = self.sample()
+        self.assertEqual(smaps_reads, 2)
+        for sample in (first, cached_failure, retried):
+            self.assertEqual(sample['health'], 'ok')
+            self.assertEqual(sample['processes'][0]['metric_kind'], 'rss')
+
+    def test_pss_vanished_during_smaps_dropped(self):
+        directory = self.process()
+        original = procfs_module.read_text
+
+        def vanish_smaps(path, limit=128 * 1024):
+            if path == directory / 'smaps_rollup':
+                raise FileNotFoundError()
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=vanish_smaps):
+            sample = self.sample()
+        self.assertEqual(sample['health'], 'ok')
+        self.assertNotIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+        self.assertEqual(sample['processes'], [])
+
+    def test_pss_cache_pruned_for_gone_processes(self):
+        directory = self.process()
+        self.sample()
+        self.assertEqual(len(self.collector.pss_cache), 1)
+        import shutil
+        shutil.rmtree(directory)
+        self.now += 5050
+        sample = self.sample()
+        self.assertEqual(sample['health'], 'ok')
+        self.assertEqual(self.collector.pss_cache, {})
+        self.assertEqual(self.collector.pss_fail_cache, {})
 
 
 class ParserPolicyTests(unittest.TestCase):
