@@ -35,6 +35,11 @@ def runtime_files(source):
                     continue
                 target = Path(folder) / relative
             yield path, target.as_posix()
+    license_path = source / 'LICENSE'
+    if license_path.is_symlink():
+        raise ValueError('Runtime license cannot be a symlink')
+    if license_path.is_file():
+        yield license_path, 'LICENSE'
 
 
 def package_extension(source, output):

@@ -67,3 +67,7 @@ gnome-extensions enable matci@local
 - [최초 구현 계획](docs/IMPLEMENTATION_PLAN.md) · [원본 조사](replica/recon.md)
 
 디스크·폴더 정리·패키지 제거는 후속 범위다. 참고 사진은 연구용이며 실행 패키지에 포함하지 않는다. 구단 표장은 각 권리자 소유이고 출처는 `web/assets/logos/manifest.json`에 기록했다.
+
+## License
+
+소스와 동봉된 문서는 [MIT License](LICENSE)로 제공한다. `web/assets/logos/`의 구단 엠블럼·로고와 기타 제3자 상표는 MIT 라이선스 대상이 아니며 각 권리자에게 권리가 있다. 출처와 파일 해시는 `web/assets/logos/manifest.json`에 기록했다.

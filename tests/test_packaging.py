@@ -12,6 +12,7 @@ class PackagingTests(unittest.TestCase):
             for name in ['extension/metadata.json', 'extension/schemas/example.gschema.xml',
                          'extension/gschemas.compiled', 'matci/__init__.py', 'matci/schema.sql',
                          'matci/__pycache__/secret.pyc', 'data/demo.json', 'migrations/001_initial.sql',
+                         'LICENSE',
                          'tools/attribution_report.py',
                          'replica/screens/private.jpg', 'local-diagnostics/health.json', '.env']:
                 path = root / name
@@ -22,7 +23,8 @@ class PackagingTests(unittest.TestCase):
             with zipfile.ZipFile(output) as archive:
                 self.assertEqual(set(archive.namelist()), {
                     'metadata.json', 'schemas/example.gschema.xml',
-                    'matci/__init__.py', 'matci/schema.sql', 'data/demo.json', 'migrations/001_initial.sql'})
+                    'matci/__init__.py', 'matci/schema.sql', 'data/demo.json',
+                    'migrations/001_initial.sql', 'LICENSE'})
 
     def test_symlink_runtime_file_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
