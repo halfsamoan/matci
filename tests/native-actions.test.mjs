@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
-import {protection, sameTargets, interactionAge} from '../extension/policy.js';
+import {protection, sameTargets, interactionAge, takeLines} from '../extension/policy.js';
 
 const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
@@ -114,6 +114,20 @@ test('rerender retains scroll adjustment and restores the focused app or control
     assert.ok(extensionSource.includes('this._rowButtons.set(group.appId, select)'));
     assert.ok(extensionSource.includes('adjustment.value = Math.min(previousScroll, Math.max(0, upper - pageSize))'));
     assert.ok(extensionSource.includes('(target?.can_focus ? target : this._root).grab_key_focus()'));
+});
+test('worker stdout framing bounds raw bytes, keeps order, and is released on stop', () => {
+    const decoder = new TextDecoder();
+    const bytes = text => new TextEncoder().encode(text);
+    const state = {text: '', bytes: 0}; const lines = [];
+    takeLines(state, bytes('{"a":1}\n{"b"'), 16, decoder, line => lines.push(line));
+    takeLines(state, bytes(':2}\n' + 'é'.repeat(8) + '\n'), 16, decoder, line => lines.push(line));
+    assert.deepEqual(lines, ['{"a":1}', '{"b":2}', 'é'.repeat(8)]);
+    assert.deepEqual(state, {text: '', bytes: 0});
+    assert.throws(() => takeLines({text: '', bytes: 0}, bytes('é'.repeat(9) + '\n'), 16, decoder, () => {}), /line byte limit/);
+    assert.throws(() => takeLines({text: 'x', bytes: 10}, bytes('x'.repeat(7)), 16, decoder, () => {}), /line limit/);
+    assert.ok(!extensionSource.includes('new TextEncoder().encode(this._stdoutText)'));
+    assert.ok(extensionSource.includes('this._writing = false; this._stdout = null;'));
+    assert.ok(extensionSource.includes('if (this._scrollTimer) GLib.source_remove(this._scrollTimer);'));
 });
 test('panel button bypasses the dummy popup and handles pointer, touch, and keyboard', () => {
     assert.ok(extensionSource.includes("new PanelMenu.Button(0.0, 'matci 메모리', true)"));
