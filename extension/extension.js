@@ -11,7 +11,7 @@ import {DockParticipant} from './notchDock.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
-import {protection, appView, keyOf, interactionAge} from './policy.js';
+import {protection, appView, keyOf, interactionAge, takeLines} from './policy.js';
 
 const MAX_LINE = 262144;
 const bytes = n => n === null || n === undefined ? '—' : `${(n / 1073741824).toFixed(2)} GiB`;
@@ -511,7 +511,9 @@ export default class Matci extends Extension {
         if (this._expanded && previousScroll > 0) {
             const scroll = this._scrollView;
             let attempts = 0;
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+            if (this._scrollTimer) GLib.source_remove(this._scrollTimer);
+            const timer = this._scrollTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+                this._scrollTimer = 0; // Re-armed only when the source continues.
                 if (!this._enabled || !this._expanded || this._scrollView !== scroll)
                     return GLib.SOURCE_REMOVE;
                 attempts++;
@@ -526,6 +528,7 @@ export default class Matci extends Extension {
                     if (adjustment) adjustment.value = previousScroll;
                     return GLib.SOURCE_REMOVE;
                 }
+                this._scrollTimer = timer;
                 return GLib.SOURCE_CONTINUE;
             });
         }
@@ -580,7 +583,7 @@ export default class Matci extends Extension {
         this._cancellable = new Gio.Cancellable();
         this._session = null;
         this._versionMismatch = false;
-        this._stdoutText = '';
+        this._stdout = {text: '', bytes: 0};
         this._decoder = new TextDecoder();
         this._goodSamples = 0;
         this._interactionBaseline = global.get_current_time();
@@ -607,16 +610,10 @@ export default class Matci extends Extension {
                 const chunk = source.read_bytes_finish(result).get_data();
                 if (!chunk.length) { this._workerFailed('관측 스트림이 종료되었습니다.'); return; }
                 // Worker JSON is ASCII-escaped, so a chunk cannot split a UTF-8 character.
-                this._stdoutText += this._decoder.decode(chunk);
-                let newline;
-                while ((newline = this._stdoutText.indexOf('\n')) >= 0) {
-                    if (newline > MAX_LINE) throw new Error('line limit');
-                    const line = this._stdoutText.slice(0, newline);
-                    if (new TextEncoder().encode(line).length > MAX_LINE) throw new Error('line byte limit');
-                    this._stdoutText = this._stdoutText.slice(newline + 1);
+                // Byte framing avoids re-encoding a ~90 KB pending snapshot after every 8 KB chunk.
+                takeLines(this._stdout, chunk, MAX_LINE, this._decoder, line => {
                     if (line.trim()) this._incoming(JSON.parse(line));
-                }
-                if (new TextEncoder().encode(this._stdoutText).length > MAX_LINE) throw new Error('line limit');
+                });
                 this._readChunk(generation);
             } catch (_error) { this._workerFailed('관측 응답이 유효하지 않습니다. 안전하게 다시 연결합니다.'); }
         });
@@ -727,13 +724,14 @@ export default class Matci extends Extension {
         try { this._worker?.force_exit(); } catch (_error) {}
         this._worker = this._input = this._output = this._cancellable = null;
         this._snapshot = this._session = null;
-        this._queue = []; this._writing = false;
+        this._queue = []; this._writing = false; this._stdout = null;
         this._suggestStart = null; this._suggestArmed = true; this._suggestCooldown = 0;
     }
     disable() {
         this._enabled = false;
         if (this._closingTimer) GLib.source_remove(this._closingTimer);
-        this._closingTimer = 0;
+        if (this._scrollTimer) GLib.source_remove(this._scrollTimer);
+        this._closingTimer = this._scrollTimer = 0;
         this._stopWorker();
         if (this._sleepSubscription) Gio.DBus.system.signal_unsubscribe(this._sleepSubscription);
         this._sleepSubscription = 0;
@@ -753,6 +751,8 @@ export default class Matci extends Extension {
             } catch (_error) { /* Shell already owns actor disposal */ }
         }
         this._surface = this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = null;
+        // Destroyed row/control wrappers must not outlive the disabled extension (e.g. lock screen).
+        this._rowButtons?.clear(); this._roleButtons?.clear(); this._scrollView = null;
         this._settings = this._interface = this._actions = null;
     }
 }

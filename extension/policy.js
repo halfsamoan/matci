@@ -59,3 +59,18 @@ export function sameTargets(previous, current) {
             old.windows.every(window => next.windows.includes(window));
     });
 }
+
+// Bounded JSON Lines framing on raw bytes. '\n' never occurs inside a UTF-8 sequence,
+// so the byte limit holds without re-encoding the pending line on every chunk.
+export function takeLines(state, chunk, limit, decoder, onLine) {
+    let start = 0, newline;
+    while ((newline = chunk.indexOf(10, start)) >= 0) {
+        if (state.bytes + newline - start > limit) throw new Error('line byte limit');
+        const line = state.text + decoder.decode(chunk.subarray(start, newline));
+        state.text = ''; state.bytes = 0; start = newline + 1;
+        onLine(line);
+    }
+    state.bytes += chunk.length - start;
+    if (state.bytes > limit) throw new Error('line limit');
+    state.text += decoder.decode(chunk.subarray(start));
+}

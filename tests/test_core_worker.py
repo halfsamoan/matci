@@ -98,6 +98,15 @@ class WorkerContractTests(unittest.TestCase):
         self.assertEqual(self.send(message)['code'], 'REQUEST_ID_REUSED')
         self.assertEqual(self.store.connection.execute('SELECT count(*) FROM app_observations').fetchone()[0], 1)
 
+    def test_only_current_sample_and_no_cached_reply_pin_process_lists(self):
+        first = self.snapshot['sample_id']
+        request = self.message('sample_now')
+        reply = self.send(request)
+        self.assertEqual(reply, self.send(request))
+        self.assertNotIsInstance(self.worker.requests[request['request_id']][1], dict)
+        self.assertNotIn('processes', self.worker.samples[first])
+        self.assertIn('processes', self.worker.current_sample)
+
     def test_session_version_unknown_command_and_raw_strings_rejected(self):
         for change, code in (({'session_id': 'old'}, 'SESSION_MISMATCH'),
                              ({'schema_version': True}, 'SCHEMA_VERSION'),

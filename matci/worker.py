@@ -1,10 +1,10 @@
 """Versioned JSONL worker. Commands can record observations, never execute actions."""
 
 from collections import OrderedDict
-import hashlib
 import json
 import re
 import sqlite3
+import zlib
 
 from .model import (MAX_APPS, MAX_PROCESSES, MAX_LINE_BYTES, integer, monotonic_ms, new_id,
                     process_key, valid_id)
@@ -66,6 +66,11 @@ class Worker:
         snapshot = self.collector.sample(self.session_id)
         require(snapshot['mode'] == self.mode, 'COLLECTOR_MODE_MISMATCH')
         self.store.save_sample(snapshot)
+        previous = self.current_sample
+        if previous is not None:
+            # Only the current sample's processes/view are ever read; receipts need its scalars.
+            self.samples[previous['sample_id']] = {k: v for k, v in previous.items() if k != 'processes'}
+            self.views.pop(previous['sample_id'], None)
         self.samples[snapshot['sample_id']] = snapshot
         if len(self.samples) > 128:
             removed, _ = self.samples.popitem(last=False)
@@ -100,11 +105,12 @@ class Worker:
         require(message.get('session_id') == self.session_id, 'SESSION_MISMATCH')
         kind = message.get('type')
         require(kind in ('sample_now', 'record_app_view', 'record_receipt'), 'COMMAND_NOT_SUPPORTED')
+        import hashlib  # Lazy: OpenSSL-backed hashlib adds ~4 MB RSS before any request arrives.
         fingerprint = hashlib.sha256(json.dumps(message, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
         if request_id in self.requests:
             old_fingerprint, response = self.requests[request_id]
             require(old_fingerprint == fingerprint, 'REQUEST_ID_REUSED')
-            return response
+            return json.loads(zlib.decompress(response))
         if kind == 'sample_now':
             require(set(message) <= {'schema_version', 'type', 'request_id', 'session_id'}, 'UNKNOWN_FIELD')
             now = self.clock()
@@ -122,7 +128,8 @@ class Worker:
                 response = self.record_receipt(message, sample)
             response.update(schema_version=1, type='ack', session_id=self.session_id,
                             request_id=request_id, sample_id=sample_id)
-        self.requests[request_id] = (fingerprint, response)
+        # Compressed copy: a cached sample_now reply must not pin a full process list.
+        self.requests[request_id] = (fingerprint, zlib.compress(json.dumps(response, separators=(',', ':')).encode()))
         if len(self.requests) > 128:
             self.requests.popitem(last=False)
         return response
