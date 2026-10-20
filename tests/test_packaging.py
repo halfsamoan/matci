@@ -12,6 +12,7 @@ class PackagingTests(unittest.TestCase):
             for name in ['extension/metadata.json', 'extension/schemas/example.gschema.xml',
                          'extension/gschemas.compiled', 'matci/__init__.py', 'matci/schema.sql',
                          'matci/__pycache__/secret.pyc', 'data/demo.json', 'migrations/001_initial.sql',
+                         'tools/attribution_report.py',
                          'replica/screens/private.jpg', 'local-diagnostics/health.json', '.env']:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
