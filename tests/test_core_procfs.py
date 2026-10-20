@@ -1,7 +1,9 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from matci import procfs as procfs_module
 from matci.policy import aggregate, classify
 from matci.procfs import ProcCollector, parse_meminfo, parse_pressure, parse_stat, parse_status_uid
 
@@ -86,12 +88,84 @@ class ProcFixtureTests(unittest.TestCase):
         self.assertEqual(classify('chrome.desktop', [process], requested_classification='candidate'),
                          ('protected', 'WORK_DESCENDANT'))
 
-    def test_disappearing_process_is_partial_not_empty_ok(self):
+    def test_disappearing_process_is_skipped_and_sample_complete(self):
         directory = self.process()
         (directory / 'stat').unlink()
         sample = self.sample()
+        self.assertEqual(sample['health'], 'ok')
+        self.assertNotIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+        self.assertEqual(sample['processes'], [])
+
+    def test_pid_reuse_during_scan_is_skipped(self):
+        directory = self.process()
+        original = procfs_module.read_text
+        stat_reads = 0
+
+        def reused_stat(path, limit=128 * 1024):
+            nonlocal stat_reads
+            if path == directory / 'stat':
+                stat_reads += 1
+                if stat_reads == 2:
+                    return stat_line(10, start=201)
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=reused_stat):
+            sample = self.sample()
+        self.assertEqual(sample['health'], 'ok')
+        self.assertNotIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+        self.assertEqual(sample['processes'], [])
+
+    def test_process_lookup_during_recheck_is_skipped(self):
+        directory = self.process()
+        original = procfs_module.read_text
+        stat_reads = 0
+
+        def vanished_stat(path, limit=128 * 1024):
+            nonlocal stat_reads
+            if path == directory / 'stat':
+                stat_reads += 1
+                if stat_reads == 2:
+                    raise ProcessLookupError()
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=vanished_stat):
+            sample = self.sample()
+        self.assertEqual(sample['health'], 'ok')
+        self.assertNotIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+        self.assertEqual(sample['processes'], [])
+
+    def test_permission_error_stays_partial(self):
+        directory = self.process()
+        original = procfs_module.read_text
+
+        def inaccessible_status(path, limit=128 * 1024):
+            if path == directory / 'status':
+                raise PermissionError()
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=inaccessible_status):
+            sample = self.sample()
         self.assertEqual(sample['health'], 'partial')
         self.assertIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+
+    def test_uid_change_stays_partial(self):
+        directory = self.process()
+        original = procfs_module.read_text
+        status_reads = 0
+
+        def changed_uid(path, limit=128 * 1024):
+            nonlocal status_reads
+            if path == directory / 'status':
+                status_reads += 1
+                if status_reads == 2:
+                    return 'Uid:\t2000\t2000\t2000\t2000\n'
+            return original(path, limit)
+
+        with patch('matci.procfs.read_text', side_effect=changed_uid):
+            sample = self.sample()
+        self.assertEqual(sample['health'], 'partial')
+        self.assertIn('PROCESS_COVERAGE_PARTIAL', sample['warnings'])
+        self.assertEqual(sample['processes'], [])
 
     def test_missing_memory_has_null_observation_age(self):
         (self.root / 'meminfo').unlink()

@@ -168,7 +168,10 @@ class ProcCollector:
                 # Recheck identity after potentially slow smaps reading.
                 after = parse_stat(read_text(entry / 'stat', 8192))
                 after_uid = parse_status_uid(read_text(entry / 'status', 65536))
-                if after['start_ticks'] != stat['start_ticks'] or after_uid != uid:
+                if after['start_ticks'] != stat['start_ticks']:
+                    # The original process exited and its PID was reused.
+                    continue
+                if after_uid != uid:
                     inaccessible = True
                     continue
                 process = {'uid': uid, 'pid': stat['pid'], 'start_ticks': stat['start_ticks'],
@@ -180,9 +183,9 @@ class ProcCollector:
                            'protection_reason': builtin_process_reason(stat['comm'])}
                 processes.append(process)
                 new_previous[key] = (now, stat['cpu_ticks'])
-            except FileNotFoundError:
-                # Normal process exit racing observation is still partial coverage.
-                inaccessible = True
+            except (FileNotFoundError, ProcessLookupError):
+                # A process that exited during any read cannot own a live descendant.
+                continue
             except (OSError, ValueError):
                 inaccessible = True
         by_pid = {p['pid']: p for p in processes}
