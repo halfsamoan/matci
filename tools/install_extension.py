@@ -127,6 +127,31 @@ def verify_identity(path):
         raise ValueError('Refusing to replace a different extension')
 
 
+def prepare_staging(source, parent, compiler, restore=None):
+    staging = Path(tempfile.mkdtemp(prefix='.matci-stage-', dir=parent))
+    try:
+        if restore:
+            shutil.copytree(restore, staging, dirs_exist_ok=True)
+        else:
+            for source_file, name in runtime_files(source):
+                destination = staging / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_file, destination)
+        verify_identity(staging)
+        subprocess.run([compiler, '--strict', str(staging / 'schemas')], check=True)
+        return staging
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
+def prune_backups(backups, keep=5):
+    candidates = sorted((path for path in Path(backups).glob('extension-*')
+                         if path.is_dir() and not path.is_symlink()), key=lambda path: path.name)
+    for obsolete in candidates[:-keep]:
+        shutil.rmtree(obsolete)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group()
@@ -165,22 +190,15 @@ def main():
             raise SystemExit('복구할 백업이 없습니다.')
         restore = candidates[-1]
         verify_identity(restore)
-    staging = Path(tempfile.mkdtemp(prefix='.matci-stage-', dir=parent))
-    if restore:
-        shutil.copytree(restore, staging, dirs_exist_ok=True)
-    else:
-        for source, name in runtime_files(Path(__file__).resolve().parents[1]):
-            destination = staging / name
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
-    verify_identity(staging)
-    subprocess.run([compiler, '--strict', str(staging / 'schemas')], check=True)
+    source = Path(__file__).resolve().parents[1]
+    staging = prepare_staging(source, parent, compiler, restore)
     parked = None
     backup = None
     if target.exists():
         backups.mkdir(parents=True, exist_ok=True, mode=0o700)
         backup = backups / datetime.now(timezone.utc).strftime('extension-%Y%m%d-%H%M%S-%f')
         shutil.copytree(target, backup)
+        prune_backups(backups)
         print(f'이전 버전 백업: {backup}')
     update_support = updates_supported() if target.exists() and args.upgrade and not args.direct else False
     strategy = choose_install_path(target.exists(), upgrade=args.upgrade, direct=args.direct,

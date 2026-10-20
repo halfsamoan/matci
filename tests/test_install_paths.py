@@ -1,5 +1,7 @@
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,6 +20,30 @@ finally:
 
 
 class InstallPathTests(unittest.TestCase):
+    def test_schema_compile_failure_removes_staging_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            parent = root / 'extensions'
+            parent.mkdir()
+            metadata = root / 'metadata.json'
+            metadata.write_text(json.dumps({'uuid': installer.UUID}), encoding='utf-8')
+            runtime_files = [(metadata, 'metadata.json')]
+            with patch.object(installer, 'runtime_files', return_value=runtime_files), \
+                    patch.object(installer.subprocess, 'run',
+                                 side_effect=subprocess.CalledProcessError(1, 'glib-compile-schemas')):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    installer.prepare_staging(root, parent, 'glib-compile-schemas')
+            self.assertEqual(list(parent.glob('.matci-stage-*')), [])
+
+    def test_pruning_sixth_backup_removes_oldest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for index in range(6):
+                (root / f'extension-{index:02d}').mkdir()
+            installer.prune_backups(root)
+            self.assertFalse((root / 'extension-00').exists())
+            self.assertEqual(len(list(root.glob('extension-*'))), 5)
+
     def test_updates_supported_requires_gsettings_and_manager(self):
         with tempfile.TemporaryDirectory() as temp:
             manager = Path(temp) / 'com.mattjakeman.ExtensionManager.desktop'
