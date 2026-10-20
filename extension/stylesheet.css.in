@@ -40,7 +40,7 @@
 .matci-app-row { min-height: 36px; padding: 2px; }
 .matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 12px; background-color: transparent; }
 .matci-app-select:hover { background-color: {{color.separatorSubtle}}; }
-.matci-app-select:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
+.matci-app-select:focus, .matci-app-protected:focus, .matci-icon-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
 .matci-app-select StIcon { color: {{color.labelSecondary}}; }
 .matci-app-selected { background-color: {{color.hoverWash}}; }
 .matci-selected-check { color: {{color.focus}} !important; }
@@ -73,7 +73,7 @@
 .matci-icon-button:active { background-color: {{color.pressedWash}}; }
 .matci-button:focus { box-shadow: inset 0 0 0 2px {{color.focus}}; }
 .matci-button:insensitive, .matci-icon-button:insensitive { color: {{color.labelDisabled}}; }
-.matci-primary-button { color: {{color.labelPrimary}}; background-color: {{color.actionPrimary}}; font-weight: 600; }
+.matci-primary-button { color: #ffffff; background-color: {{color.actionPrimary}}; font-weight: 600; }
 .matci-primary-button:hover { color: {{color.labelPrimary}}; background-color: {{color.actionHover}}; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StIcon { color: {{color.labelSecondary}}; }

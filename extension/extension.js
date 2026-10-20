@@ -5,6 +5,7 @@ import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
 import {DockParticipant} from './notchDock.js';
@@ -47,7 +48,7 @@ export default class Matci extends Extension {
         this._suggestStart = null;
         this._suggestCooldown = 0;
         this._suggestArmed = true;
-        this._root = new St.BoxLayout({vertical: true, reactive: false, can_focus: true,
+        this._root = new St.BoxLayout({vertical: true, reactive: false, can_focus: false,
             style_class: 'matci-notch', clip_to_allocation: true,
             accessible_name: 'matci 메모리 노치'});
         this._root.connect('key-press-event', (_actor, event) => {
@@ -57,6 +58,8 @@ export default class Matci extends Extension {
             return Clutter.EVENT_PROPAGATE;
         });
         this._surface = createNotchSurface(this._root);
+        // Tab/arrow navigation inside the notch; St drops the group when the root is destroyed.
+        global.focus_manager.add_group(this._root);
         Main.layoutManager.addChrome(this._surface, {affectsStruts: false, trackFullscreen: false});
         const staleIndicator = Main.panel.statusArea[this.uuid];
         if (staleIndicator) {
@@ -287,7 +290,7 @@ export default class Matci extends Extension {
             this._rowButtons.clear();
             this._roleButtons.clear();
             this._scrollView = null;
-            for (const child of this._root.get_children()) {
+            for (const [index, child] of this._root.get_children().entries()) {
                 const descendants = [child];
                 while (descendants.length) {
                     const actor = descendants.pop();
@@ -295,7 +298,9 @@ export default class Matci extends Extension {
                     actor.can_focus = false;
                     descendants.push(...actor.get_children());
                 }
+                // Mirror the opening split: secondary (index >= 3) leaves first, primary one stagger later.
                 child.ease({opacity: 0, duration: DESIGN.motion.micro,
+                    delay: index >= 3 ? 0 : DESIGN.motion.secondaryDelay - DESIGN.motion.primaryDelay,
                     mode: Clutter.AnimationMode[DESIGN.motion.collapseMode]});
             }
             this._contentHeight = 1;
@@ -406,6 +411,10 @@ export default class Matci extends Extension {
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
                             `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}`});
                     select._matciAppId = group.appId;
+                    // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
+                    select.connect('key-focus-in', () => {
+                        if (select.has_allocation()) ensureActorVisibleInScrollView(scroll, select);
+                    });
                     this._rowButtons.set(group.appId, select);
                     const appContent = new St.BoxLayout({style_class: 'matci-app-name-row', x_expand: true});
                     try {
@@ -468,8 +477,9 @@ export default class Matci extends Extension {
                 controls.add_child(new St.Widget({x_expand: true}));
                 controls.add_child(this._tagRole(this._button('닫기 요청', () => this._confirm(), !this._actions.busy), 'confirm'));
             } else {
-                const needsRefresh = this._versionMismatch || snapshot?.health === 'error' ||
-                    this._message?.includes('갱신 실패');
+                // A version mismatch needs reinstalling, not a refresh; a dead worker does need one.
+                const needsRefresh = !this._versionMismatch && (snapshot?.health === 'error' ||
+                    this._message?.includes('갱신 실패') || !this._worker);
                 if (needsRefresh) controls.add_child(this._iconButton('view-refresh-symbolic', 'RAM 새로고침',
                     () => this._refresh(), !this._actions.busy, 'refresh'));
                 controls.add_child(new St.Widget({x_expand: true}));
@@ -553,6 +563,7 @@ export default class Matci extends Extension {
         this._selected.clear(); this._render();
     }
     async _refresh() {
+        if (!this._worker) { this._restartWorker(); this._render(); return; }
         try { await this._request('sample_now'); }
         catch (_error) { this._message = '관측 갱신 실패 · 다시 연결하세요.'; this._render(); }
     }
