@@ -4,7 +4,7 @@ Ubuntu GNOME의 메모리 관측·수동 정리 도우미. matci는 평소 패�
 
 matci와 [Archsport](https://github.com/halfsamoan/archsport)는 별도 앱·저장소다. matci는 사용자가 열 때만 표면을 표시하고 Archsport는 경기 관련 상태가 있을 때만 노치를 표시한다. 겹침 방지 배치만 공유한다.
 
-전체 RAM 사용률(MemTotal−MemAvailable), PSI, 프로세스별 PSS/RSS, 관측 가능한 프로세스 CPU 비율을 구별해 보여준다. 보호 이유를 확인한 뒤 직접 선택한 앱의 현재 창에 정상 닫기를 요청한다. 자동 종료·강제 종료·캐시 강제 비우기는 하지 않는다. Python core는 표준 라이브러리만 사용한다.
+전체 RAM 사용률(MemTotal−MemAvailable), PSI, 프로세스별 PSS/RSS, 관측 가능한 프로세스 CPU 비율을 구별한다. 앱 행에는 값(2^30 바이트 기준 GB)만 보이고(PSS와 RSS 행이 섞일 때만 RSS 값에 상한 표시 '≤'), 지표 종류·측정 나이·보호 이유는 행의 접근성 이름에 남는다. 보호 이유를 확인한 뒤 직접 선택한 앱의 현재 창에 정상 닫기를 요청한다. 자동 종료·강제 종료·캐시 강제 비우기는 하지 않는다. Python core는 표준 라이브러리만 사용한다.
 
 **현재 수집하지 않는 항목:** 시스템 전체 CPU 사용률, swap 사용량, GPU 사용률, GPU 온도는 snapshot/provider에 아직 없다. 최종 제품 명세에 포함된 후속 P1 작업이며 현재 구현 완료로 간주하지 않는다.
 
