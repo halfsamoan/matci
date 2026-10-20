@@ -30,7 +30,7 @@ test('manual review is not interrupted by automatic events', () => {
 });
 
 test('shared dock protocol and manual tie use last-toggle ownership', () => {
-    assert.equal(DOCK_PROTOCOL, 4);
+    assert.equal(DOCK_PROTOCOL, 5);
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 

@@ -1,5 +1,18 @@
 # Native GNOME validation log
 
+## 2026-10-20 목·어깨·본문 후보 (matci v15 / Archsport v18)
+
+격리 `GSETTINGS_BACKEND=keyfile` GNOME Shell 50.1에서 두 확장을 함께
+ACTIVE로 띄웠고, 임시 개발 복사본의 합성 기본·선택·검토 화면을
+[캡처](iterations/README.md)했다. 보호 앱의 이유는 접근성 이름에 남기고
+회색 자물쇠와 짧은 보호 표시를 그린다. 선택 전 `검토 0`과 정상 상태의
+새로고침은 숨긴다. 테스트 목록을 stage에 붙인 뒤 높이를 계산해
+`St-CRITICAL ... not in the stage` 경고도 해소했다.
+
+가상 모니터의 hit probe에서 투명한 상단 모서리는 배경 actor, 목·어깨는
+노치 hit actor로 pick됐다. 실제 사용자 Shell은 아직 v13 ACTIVE이며
+실제 입력·배율·5분 유휴 성능 검수는 남았다.
+
 ## 2026-10-20 Pretendard / reveal candidate (v14)
 
 재로그인 후 사용자 Shell은 matci v13 ACTIVE였다. 다음 후보 v14의

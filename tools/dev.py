@@ -24,7 +24,7 @@ def run(command, cwd):
 
 
 def run_checks(matci_root, archsport_root):
-    for filename in ('extension/notchDock.js', 'extension/dockModel.js'):
+    for filename in ('extension/notchDock.js', 'extension/dockModel.js', 'extension/notchSurface.js'):
         if not filecmp.cmp(matci_root / filename, archsport_root / filename, shallow=False):
             print(f'공유 dock 파일이 서로 다릅니다: {filename}', file=sys.stderr)
             return False
@@ -37,7 +37,8 @@ def run_checks(matci_root, archsport_root):
         return False
     checks = (
         ('Archsport Python', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests'], archsport_root),
-        ('Archsport Node', [node, '--test', 'tests/dock.test.mjs'], archsport_root),
+        ('Archsport Node', [node, '--test', 'tests/dock.test.mjs',
+                             'tests/fixturePresentation.test.mjs'], archsport_root),
         ('Archsport ESLint', [npx, '--yes', 'eslint@9', '--no-config-lookup', '-c', 'eslint.config.mjs',
                               *map(str, sorted((archsport_root / 'extension').glob('*.js')))], archsport_root),
         ('Archsport schema', [compiler, '--strict', '--dry-run', 'extension/schemas'], archsport_root),
