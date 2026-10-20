@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 from matci.demo import DemoCollector, load_replay
-from matci.__main__ import periodic_sample
+from matci.__main__ import next_deadline, periodic_sample
 from matci.model import MAX_LINE_BYTES, new_id, utc_now
 from matci.store import Store, WorkerLocked, current_uid
 from matci.worker import Worker, decode_line, ProtocolError
@@ -322,6 +322,11 @@ class WorkerContractTests(unittest.TestCase):
 
 
 class DemoCliTests(unittest.TestCase):
+    def test_snapshot_response_resets_deadline_but_ack_and_error_do_not(self):
+        self.assertEqual(next_deadline({'type': 'snapshot'}, 20.0, 5.0, 12.0), 25.0)
+        for response in ({'type': 'ack'}, {'type': 'error'}):
+            self.assertEqual(next_deadline(response, 20.0, 5.0, 12.0), 12.0)
+
     def test_periodic_sample_error_is_emitted_and_later_poll_continues(self):
         class FlakyWorker:
             def __init__(self):

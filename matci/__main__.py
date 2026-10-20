@@ -57,6 +57,12 @@ def periodic_sample(worker):
         return worker.error('STORAGE_OR_OBSERVATION_ERROR')
 
 
+def next_deadline(response, now, interval, current):
+    if isinstance(response, dict) and response.get('type') == 'snapshot':
+        return now + interval
+    return current
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='matci local memory observer (no app control)')
     group = parser.add_mutually_exclusive_group()
@@ -100,7 +106,9 @@ def main(argv=None):
                 line = messages.get(timeout=max(0, next_sample - time.monotonic()))
                 if line is None:
                     break
-                emit(worker.error('MESSAGE_TOO_LARGE') if line is False else worker.handle_line(line))
+                response = worker.error('MESSAGE_TOO_LARGE') if line is False else worker.handle_line(line)
+                emit(response)
+                next_sample = next_deadline(response, time.monotonic(), args.interval, next_sample)
                 if time.monotonic() >= next_sample:
                     emit(periodic_sample(worker))
                     next_sample = time.monotonic() + args.interval
