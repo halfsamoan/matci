@@ -24,7 +24,8 @@ def run(command, cwd):
 
 
 def run_checks(matci_root, archsport_root):
-    for filename in ('extension/notchDock.js', 'extension/dockModel.js', 'extension/notchSurface.js'):
+    for filename in ('docs/design/design-tokens.json', 'extension/designTokens.js',
+                     'extension/notchDock.js', 'extension/dockModel.js', 'extension/notchSurface.js'):
         if not filecmp.cmp(matci_root / filename, archsport_root / filename, shallow=False):
             print(f'공유 dock 파일이 서로 다릅니다: {filename}', file=sys.stderr)
             return False
