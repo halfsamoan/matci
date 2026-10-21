@@ -51,7 +51,7 @@
 
 격리된 `GSETTINGS_BACKEND=keyfile` GNOME Shell 50.1(1600×900 가상 모니터)에
 최종 소스를 설치해 확인했다. 합성 경기·앱 상태는 실행 중인 복사본에만 Eval로
-주입했고 소스에는 없다. [matci v16 캡처](iterations/README.md), [Archsport v19 캡처](../../../archsport/docs/design/iterations/README.md). 실제 사용자 세션은 아직 v17/v14 ACTIVE다.
+주입했고 소스에는 없다. [matci v16 캡처](iterations/README.md), [Archsport v19 캡처](https://github.com/halfsamoan/archsport/blob/main/docs/design/iterations/README.md). 실제 사용자 세션은 아직 v17/v14 ACTIVE다.
 
 - 계획 격차 수정: matci 노치 루트를 St focus group으로 등록해 Tab·방향키가 행,
   보호 행(보호 이유 포함), `검토 N`에 닿는다. 새로고침은 worker 오류·갱신

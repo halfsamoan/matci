@@ -29,7 +29,7 @@
 보호됨, 파일 작업 보호 → 코드 편집기 → 검토 1`이었다. 보호 이유는 키보드
 포커스와 접근성 이름으로 닿는다. 실제 키보드·스크린리더 검수는 별도다.
 블러 inset과 테마 재적용 후 클릭 판정 수정은
-[Archsport v19 기록](../../../../archsport/docs/design/iterations/README.md)과 같은 공유 코드다.
+[Archsport v19 기록](https://github.com/halfsamoan/archsport/blob/main/docs/design/iterations/README.md)과 같은 공유 코드다.
 
 ## 2026-10-20 v15 실루엣 후보
 
