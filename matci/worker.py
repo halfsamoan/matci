@@ -8,7 +8,7 @@ import zlib
 
 from .model import (MAX_APPS, MAX_PROCESSES, MAX_LINE_BYTES, integer, monotonic_ms, new_id,
                     process_key, valid_id)
-from .policy import aggregate, classify
+from .policy import aggregate_members, classify, tree_members
 
 STATUSES = frozenset({'requested', 'observing', 'completed', 'partial', 'cancelled', 'timeout', 'rejected'})
 RESULTS = frozenset({'requested', 'window_closed', 'still_running', 'cancelled', 'timeout', 'rejected'})
@@ -168,7 +168,7 @@ class Worker:
         require(isinstance(protected, list) and len(protected) <= MAX_APPS and
                 all(valid_id(app_id) for app_id in protected) and len(set(protected)) == len(protected), 'PROTECTION_LIST')
         observed = {process_key(p): p for p in sample['processes']}
-        seen_keys, seen_apps, clean_apps = set(), set(), []
+        seen_keys, seen_apps, clean_apps, pending = set(), set(), [], []
         for app in apps:
             require(isinstance(app, dict) and set(app) == {'app_id', 'process_keys', 'classification', 'reason_code'}, 'APP_FIELDS')
             app_id, keys = app['app_id'], app['process_keys']
@@ -190,7 +190,14 @@ class Worker:
             if classification != 'protected' and (sample['truncated'] or
                     'PROCESS_COVERAGE_PARTIAL' in sample['warnings']):
                 classification, reason = 'unknown', 'PROCESS_COVERAGE_PARTIAL'
-            kind, amount, coverage = aggregate(processes)
+            pending.append((app_id, processes, classification, reason))
+        # Stored values match what the notch shows: each app's process tree, never another app's.
+        children = {}
+        for process in sample['processes']:
+            children.setdefault(process.get('ppid'), []).append(process)
+        roots = {process['pid'] for _app_id, processes, _c, _r in pending for process in processes}
+        for app_id, processes, classification, reason in pending:
+            kind, amount, coverage = aggregate_members(tree_members(processes, roots, children))
             clean_apps.append({'app_id': app_id, 'metric_kind': kind, 'memory_bytes': amount,
                                'coverage': coverage, 'classification': classification, 'reason_code': reason})
         self.store.save_apps(sample, clean_apps, protected)

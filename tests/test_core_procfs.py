@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from matci import procfs as procfs_module
-from matci.policy import aggregate, classify
+from matci.policy import aggregate, aggregate_members, classify, tree_members
 from matci.procfs import ProcCollector, parse_meminfo, parse_pressure, parse_stat, parse_status_uid
 from matci.store import Store
 from matci.worker import Worker
@@ -366,6 +366,23 @@ class ParserPolicyTests(unittest.TestCase):
         self.assertEqual(aggregate([{'metric_kind': 'pss', 'memory_bytes': 100, 'coverage': 'complete'},
                                     {'metric_kind': 'rss', 'memory_bytes': 200, 'coverage': 'complete'}]),
                          ('unavailable', None, 'partial'))
+
+    def test_app_tree_sums_pss_and_stops_at_other_apps(self):
+        def proc(pid, ppid, amount, kind='pss'):
+            return {'uid': 1000, 'pid': pid, 'ppid': ppid, 'start_ticks': pid, 'memory_bytes': amount,
+                    'metric_kind': kind, 'coverage': 'complete'}
+        # terminal(1) -> shell(2) -> firefox(3) -> content(4 pss, 5 rss); firefox is its own app.
+        processes = [proc(1, 0, 10), proc(2, 1, 1), proc(3, 2, 500), proc(4, 3, 700), proc(5, 3, 90, 'rss')]
+        children = {}
+        for process in processes:
+            children.setdefault(process['ppid'], []).append(process)
+        roots = {1, 3}
+        firefox = tree_members([processes[2]], roots, children)
+        self.assertEqual(sorted(p['pid'] for p in firefox), [3, 4, 5])
+        self.assertEqual(aggregate_members(firefox), ('pss', 1290, 'partial'))
+        terminal = tree_members([processes[0]], roots, children)
+        self.assertEqual(aggregate_members(terminal), ('pss', 11, 'complete'))
+        self.assertEqual(aggregate_members([]), ('unavailable', None, 'unavailable'))
 
     def test_builtin_cannot_be_unset_or_unknown_mapped(self):
         process = {'comm': 'chrome', 'cpu_fraction_one_core': 0, 'has_work_descendants': False}

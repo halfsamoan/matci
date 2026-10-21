@@ -48,6 +48,34 @@ def classify(app_id, processes, user_protected=(), mapped=True,
     return requested_classification, requested_reason
 
 
+def tree_members(processes, root_pids, children):
+    """Window processes plus descendants, stopping at another app's window process (as the shell does)."""
+    own = {p['pid'] for p in processes}
+    members, stack = {}, list(processes)
+    while stack:
+        process = stack.pop()
+        key = (process['uid'], process['pid'], process['start_ticks'])
+        if key in members:
+            continue
+        members[key] = process
+        stack.extend(child for child in children.get(process['pid'], ())
+                     if child['pid'] not in root_pids or child['pid'] in own)
+    return list(members.values())
+
+
+def aggregate_members(members):
+    """PSS sum of an app tree; small members still on RSS make it an upper bound marked partial."""
+    if not members:
+        return 'unavailable', None, 'unavailable'
+    kinds = {p['metric_kind'] for p in members}
+    if 'unavailable' in kinds or any(p['memory_bytes'] is None for p in members):
+        return 'unavailable', None, 'partial'
+    total = sum(p['memory_bytes'] for p in members)
+    if len(kinds) > 1:
+        return 'pss', total, 'partial'
+    return next(iter(kinds)), total, 'complete' if all(p['coverage'] == 'complete' for p in members) else 'partial'
+
+
 def aggregate(processes):
     if not processes:
         return 'unavailable', None, 'unavailable'
