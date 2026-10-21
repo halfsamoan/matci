@@ -89,6 +89,6 @@
 .matci-destructive-button:focus { box-shadow: inset 0 0 0 2px {{color.labelPrimary}}; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StLabel { font-feature-settings: "tnum"; }
-.matci-panel-status StIcon { color: {{color.labelSecondary}}; }
+/* The RAM icon takes the panel's own colour like every system icon; only pressure tints it. */
 .matci-panel-status StIcon.matci-panel-warning { color: {{color.accentWarning}}; }
 .matci-panel-button:focus .matci-panel-status { background-color: {{color.hoverWash}}; box-shadow: inset 0 0 0 2px {{color.focus}}; border-radius: 8px; }
