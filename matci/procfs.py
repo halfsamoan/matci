@@ -6,6 +6,7 @@ import re
 
 from .model import MAX_PROCESSES, monotonic_ms, new_id, utc_now, process_key
 from .policy import builtin_process_reason
+from .hardware import read_hardware
 
 # Per-sample smaps_rollup reads while the list is open. 48 covers every sizeable process of a
 # multi-process browser/Electron tree within the first sample (a full ~150-process pass measured
@@ -97,8 +98,9 @@ def read_text(path, limit=128 * 1024):
 
 class ProcCollector:
     def __init__(self, root='/proc', uid=None, clock=monotonic_ms,
-                 page_size=None, clock_ticks=None):
+                 page_size=None, clock_ticks=None, hwmon_root='/sys/class/hwmon'):
         self.root = Path(root)
+        self.hwmon_root = Path(hwmon_root)
         self.uid = os.getuid() if uid is None else uid
         self.clock = clock
         self.page_size = page_size or os.sysconf('SC_PAGE_SIZE')
@@ -288,7 +290,8 @@ class ProcCollector:
         return {'schema_version': 1, 'type': 'snapshot', 'mode': 'live',
                 'sample_id': new_id(), 'session_id': session_id, 'sampled_at': utc_now(),
                 'monotonic_ms': now, 'boot_id': boot_id, 'health': health, 'memory': memory,
-                'pressure': pressure, 'processes': processes, 'warnings': warnings,
+                'pressure': pressure, 'hardware': read_hardware(self.hwmon_root),
+                'processes': processes, 'warnings': warnings,
                 'truncated': truncated}
 
     def sample_light(self, session_id):
@@ -328,4 +331,5 @@ class ProcCollector:
         return {'schema_version': 1, 'type': 'snapshot', 'mode': 'live',
                 'sample_id': new_id(), 'session_id': session_id, 'sampled_at': utc_now(),
                 'monotonic_ms': now, 'boot_id': boot_id, 'health': health, 'memory': memory,
-                'pressure': pressure, 'processes': [], 'warnings': warnings, 'truncated': False}
+                'pressure': pressure, 'hardware': read_hardware(self.hwmon_root), 'processes': [],
+                'warnings': warnings, 'truncated': False}

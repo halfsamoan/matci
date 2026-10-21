@@ -32,6 +32,14 @@ const metricKind = kind => ({pss: 'PSS 비례 배분 기준', rss: 'RSS 상주 �
 // 28 px tools, so a small top pad keeps the first glyphs right under the panel.
 const PAD_TOP = 6, PAD_SIDE = 14, PAD_BOTTOM = 14;
 const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
+const hardwareText = hardware => `CPU 온도 ${Number.isFinite(hardware?.cpu_temperature_c) ?
+    `${Math.round(hardware.cpu_temperature_c)}°C` : '—'} · 팬 속도 ${Number.isFinite(hardware?.cpu_fan_rpm) ?
+    `${Math.round(hardware.cpu_fan_rpm).toLocaleString('ko-KR')} RPM` : '—'}`;
+const hardwareAvailable = hardware => Number.isFinite(hardware?.cpu_temperature_c) ||
+    Number.isFinite(hardware?.cpu_fan_rpm);
+const hardwareAccessibleText = hardware => `CPU 온도 ${Number.isFinite(hardware?.cpu_temperature_c) ?
+    `섭씨 ${Math.round(hardware.cpu_temperature_c)}도` : '측정 불가'}, 팬 속도 ${Number.isFinite(hardware?.cpu_fan_rpm) ?
+    `분당 ${Math.round(hardware.cpu_fan_rpm)}회전` : '측정 불가'}`;
 
 export default class Matci extends Extension {
     enable() {
@@ -62,6 +70,9 @@ export default class Matci extends Extension {
         this._expanded = false;
         this._returnWindow = null;
         this._scrollView = null;
+        this._sensorLabel = null;
+        this._brand = null;
+        this._brandAccessibleBase = null;
         this._rowButtons = new Map();
         this._roleButtons = new Map();
         this._rowOrder = [];
@@ -456,6 +467,7 @@ export default class Matci extends Extension {
         if (this._expanded && this._renderedExpanded && isActorWithin(global.stage.get_key_focus(), this._root) &&
             this._listSignature() === this._renderedSignature) {
             this._updatePanel();
+            this._updateHardwareReadout();
             return;
         }
         if (!this._expanded && this._renderedExpanded && this._interface.get_boolean('enable-animations')) {
@@ -498,6 +510,9 @@ export default class Matci extends Extension {
         this._rowButtons = new Map();
         this._roleButtons = new Map();
         this._scrollView = null;
+        this._sensorLabel = null;
+        this._brand = null;
+        this._brandAccessibleBase = null;
         for (const child of this._root.get_children()) child.destroy();
         const opening = this._expanded && !this._renderedExpanded;
         this._updatePanel();
@@ -516,6 +531,7 @@ export default class Matci extends Extension {
             // Focus anchor on open: receives Tab/Esc and is read first, but draws no ring, so a
             // mouse open shows no stray focus box. Tab then reveals rings on rows and buttons.
             const brand = new St.BoxLayout({style_class: 'matci-brand', x_expand: true, reactive: true, can_focus: true});
+            this._brand = brand;
             this._tagRole(brand, 'anchor');
             // A dead worker waiting for its restart reads as disconnected, never as "connecting".
             const disconnected = !this._worker && !this._versionMismatch;
@@ -556,8 +572,9 @@ export default class Matci extends Extension {
             const memoryDetail = this._label(`가용 ${bytes(memory?.available_bytes)}`,
                 'matci-metric-detail');
             memoryDetail.accessible_name = `사용 ${bytes(usedBytes)}, 가용 ${bytes(memory?.available_bytes)}, 전체 ${bytes(memory?.total_bytes)}`;
-            brand.accessible_name = memory ? `메모리 ${percent(memory.used_ratio)} 사용, ${memoryDetail.accessible_name}` :
+            this._brandAccessibleBase = memory ? `메모리 ${percent(memory.used_ratio)} 사용, ${memoryDetail.accessible_name}` :
                 `메모리, ${this._message}`;
+            brand.accessible_name = this._brandAccessibleBase;
             memoryDetail.x_align = memoryDetail.y_align = Clutter.ActorAlign.END;
             metric.add_child(memoryDetail);
             this._root.add_child(metric);
@@ -569,6 +586,11 @@ export default class Matci extends Extension {
                 width: Math.round(innerWidth * ratio), height: 4}));
             meter.add_child(new St.Widget({style_class: 'matci-meter-rest', x_expand: true, height: 4}));
             this._root.add_child(meter);
+            if (Number.isFinite(memory?.used_ratio) && hardwareAvailable(panelSnapshot?.hardware)) {
+                this._sensorLabel = this._label('', 'matci-status');
+                this._root.add_child(this._sensorLabel);
+                this._updateHardwareReadout();
+            }
             if (pressured) {
                 const pressure = this._label(`메모리가 부족해 작업이 지연되는 중 · 최근 10초 ${psi.toFixed(1)}%`, 'matci-protected');
                 pressure.accessible_name = `메모리 압박, PSI some 10초 평균 ${psi.toFixed(2)}%`;
@@ -820,15 +842,27 @@ export default class Matci extends Extension {
     _listSignature() {
         const snapshot = this._snapshot;
         const memory = (this._panelSnapshot ?? snapshot)?.memory;
+        const sensorsAvailable = hardwareAvailable((this._panelSnapshot ?? snapshot)?.hardware);
         const ready = Boolean(snapshot) && !this._detailPaused && !this._detailLoading;
         const groups = ready && snapshot.mode === 'live' ? this._groups(snapshot) : [];
         const metrics = appMetrics(groups, {truncated: Boolean(snapshot?.truncated)});
         return JSON.stringify([percent(memory?.used_ratio), Math.round((memory?.available_bytes ?? 0) / 1e8),
+            sensorsAvailable,
             (snapshot?.pressure?.some_avg10 ?? 0) >= 1, this._message, this._actionStatus, this._actionMessage,
             this._suggestion, this._detailLoading, this._detailPaused, this._detailError, this._versionMismatch,
             Boolean(this._worker), [...this._selected], this._actions?.review?.id ?? null, this._actions?.busy,
             groups.map((group, index) => [group.appId, Math.round((metrics[index].value ?? -1) / 1e8),
                 metrics[index].count, this._protection(group, snapshot)])]);
+    }
+    _updateHardwareReadout() {
+        if (!this._sensorLabel) return;
+        const hardware = this._panelSnapshot?.hardware;
+        const text = hardwareText(hardware);
+        const accessible = hardwareAccessibleText(hardware);
+        if (this._sensorLabel.text !== text) this._sensorLabel.text = text;
+        if (this._sensorLabel.accessible_name !== accessible) this._sensorLabel.accessible_name = accessible;
+        const brandName = `${this._brandAccessibleBase}, ${accessible}`;
+        if (this._brand && this._brand.accessible_name !== brandName) this._brand.accessible_name = brandName;
     }
     _review() {
         if (!this._snapshot || this._detailLoading || this._detailPaused || this._actions.busy) return;

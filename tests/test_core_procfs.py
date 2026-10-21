@@ -27,7 +27,8 @@ class ProcFixtureTests(unittest.TestCase):
         (self.root / 'sys/kernel/random/boot_id').write_text('fixture-boot')
         self.now = 1000
         self.collector = ProcCollector(self.root, uid=1000, clock=lambda: self.now,
-                                       page_size=4096, clock_ticks=100)
+                                       page_size=4096, clock_ticks=100,
+                                       hwmon_root=self.root / 'hwmon')
 
     def process(self, pid=10, uid=1000, comm='chrome', ppid=1, ticks=100, start=200, pages=50, pss=True):
         directory = self.root / str(pid)
@@ -52,6 +53,21 @@ class ProcFixtureTests(unittest.TestCase):
         self.assertEqual(sample['pressure']['availability'], 'unavailable')
         self.assertEqual(sample['processes'][0]['memory_bytes'], 123 * 1024)
         self.assertIsNone(sample['processes'][0]['cpu_fraction_one_core'])
+
+    def test_full_and_light_samples_include_optional_hardware_readings(self):
+        chip = self.root / 'hwmon' / 'hwmon0'
+        chip.mkdir(parents=True)
+        (chip / 'name').write_text('k10temp')
+        (chip / 'temp1_label').write_text('Tctl')
+        (chip / 'temp1_input').write_text('60625')
+        fan = self.root / 'hwmon' / 'hwmon1'
+        fan.mkdir()
+        (fan / 'name').write_text('asus')
+        (fan / 'fan1_label').write_text('cpu_fan')
+        (fan / 'fan1_input').write_text('3300')
+        expected = {'cpu_temperature_c': 60.625, 'cpu_fan_rpm': 3300}
+        self.assertEqual(self.sample()['hardware'], expected)
+        self.assertEqual(self.collector.sample_light('fixture-session')['hardware'], expected)
 
     def test_rss_fallback_and_pss_age(self):
         self.process()
