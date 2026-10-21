@@ -69,6 +69,18 @@
 .matci-primary-button:hover { color: {{color.labelPrimary}}; background-color: {{color.actionHover}}; }
 /* A blue ring vanishes on the blue fill; the primary button takes a light inner ring instead. */
 .matci-primary-button:focus { box-shadow: inset 0 0 0 2px {{color.labelPrimary}}; }
+.matci-app-reason { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
+.matci-review-line { spacing: 8px; }
+.matci-hint { color: {{color.labelTertiary}}; font-size: {{typography.caption}}px; }
+.matci-problem { spacing: {{spacing.sm}}px; padding: 10px; border-radius: 10px; background-color: {{color.surfaceTrack}}; }
+.matci-problem-text { spacing: 2px; }
+.matci-problem-title { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; font-weight: 600; }
+.matci-problem-icon { color: {{color.accentWarning}}; }
+.matci-problem-icon-quiet { color: {{color.labelTertiary}}; }
+/* The step that actually closes windows carries the warning colour; reviewing stays neutral-blue. */
+.matci-destructive-button { color: #ffffff; background-color: {{color.accentCritical}}; font-weight: 600; }
+.matci-destructive-button:hover { color: #ffffff; background-color: {{color.accentCriticalLight}}; }
+.matci-destructive-button:focus { box-shadow: inset 0 0 0 2px {{color.labelPrimary}}; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StLabel { font-feature-settings: "tnum"; }
 .matci-panel-status StIcon { color: {{color.labelSecondary}}; }

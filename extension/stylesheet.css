@@ -13,17 +13,17 @@
 .matci-panel-status { spacing: 8px; }
 .matci-header { min-height: 28px; }
 .matci-brand { spacing: 8px; }
-.matci-title { color: #a1a1a8; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; }
+.matci-title { color: #a1a1a8; font-weight: 600; font-size: 10.5pt; letter-spacing: 0.02em; }
 .matci-state-note, .matci-state-error {
-    font-size: 11px;
+    font-size: 8.25pt;
     font-weight: 600;
 }
 .matci-state-note { color: #808087; }
 .matci-state-error { color: #ff4245; }
 .matci-metric-row { min-height: 38px; spacing: 12px; }
-.matci-metric { color: #f5f5f7; font-size: 30px; font-weight: 600; font-feature-settings: "tnum"; }
+.matci-metric { color: #f5f5f7; font-size: 22.5pt; font-weight: 600; font-feature-settings: "tnum"; }
 /* Bottom-aligned with the hero figure; 5 px = its descent (8) minus the detail's (3) at 30/12 px. */
-.matci-metric-detail { color: #a1a1a8; font-size: 12px; font-feature-settings: "tnum"; padding-bottom: 5px; }
+.matci-metric-detail { color: #a1a1a8; font-size: 9pt; font-feature-settings: "tnum"; padding-bottom: 5px; }
 .matci-meter-track { border-radius: 3px; background-color: #292b30; }
 .matci-meter-fill { border-radius: 3px; background-color: #a1a1a8; }
 .matci-meter-warning { background-color: #ff9230; }
@@ -33,7 +33,7 @@
 .matci-scroll StScrollBar StBin#trough { background-color: transparent; }
 .matci-list { spacing: 4px; padding-top: 2px; }
 .matci-section { min-height: 18px; }
-.matci-section-title { color: #a1a1a8; font-size: 12px; font-weight: 600; }
+.matci-section-title { color: #a1a1a8; font-size: 9pt; font-weight: 600; }
 .matci-app-row { min-height: 36px; padding: 2px; }
 .matci-app-select, .matci-app-protected { min-width: 165px; padding: 4px 8px; border-radius: 8px; background-color: transparent; }
 .matci-app-select:hover { background-color: rgba(255, 255, 255, 0.07); }
@@ -43,21 +43,21 @@
 .matci-selected-check { color: #f5f5f7 !important; }
 .matci-app-protected { color: #a1a1a8; }
 .matci-app-protected StIcon { color: #808087; }
-.matci-app-name { color: #f5f5f7; font-size: 12px; }
+.matci-app-name { color: #f5f5f7; font-size: 9pt; }
 .matci-app-icon { border-radius: 4px; }
-.matci-app-metric { color: #a1a1a8; font-size: 12px; font-feature-settings: "tnum"; }
-.matci-protected { color: #ff9230; font-size: 11px; }
-.matci-review-row { color: #a1a1a8; font-size: 12px; }
-.matci-empty { color: #a1a1a8; font-size: 12px; padding: 12px 0; }
-.matci-status { color: #a1a1a8; font-size: 11px; }
-.matci-status-error { color: #ff4245; font-size: 11px; }
+.matci-app-metric { color: #a1a1a8; font-size: 9pt; font-feature-settings: "tnum"; }
+.matci-protected { color: #ff9230; font-size: 8.25pt; }
+.matci-review-row { color: #a1a1a8; font-size: 9pt; }
+.matci-empty { color: #a1a1a8; font-size: 9pt; padding: 12px 0; }
+.matci-status { color: #a1a1a8; font-size: 8.25pt; }
+.matci-status-error { color: #ff4245; font-size: 8.25pt; }
 .matci-controls { min-height: 28px; }
 .matci-button, .matci-icon-button {
     color: #f5f5f7;
     border-radius: 8px;
     background-color: #23252a;
 }
-.matci-button { padding: 7px 12px; font-size: 12px; }
+.matci-button { padding: 7px 12px; font-size: 9pt; }
 .matci-icon-button { color: #a1a1a8; width: 28px; height: 28px; background-color: transparent; }
 .matci-button:hover { background-color: #303238; }
 .matci-icon-button:hover { color: #f5f5f7; background-color: rgba(255, 255, 255, 0.07); }
@@ -69,6 +69,18 @@
 .matci-primary-button:hover { color: #f5f5f7; background-color: #0077ed; }
 /* A blue ring vanishes on the blue fill; the primary button takes a light inner ring instead. */
 .matci-primary-button:focus { box-shadow: inset 0 0 0 2px #f5f5f7; }
+.matci-app-reason { color: #808087; font-size: 8.25pt; }
+.matci-review-line { spacing: 8px; }
+.matci-hint { color: #808087; font-size: 8.25pt; }
+.matci-problem { spacing: 8px; padding: 10px; border-radius: 10px; background-color: #292b30; }
+.matci-problem-text { spacing: 2px; }
+.matci-problem-title { color: #f5f5f7; font-size: 9pt; font-weight: 600; }
+.matci-problem-icon { color: #ff9230; }
+.matci-problem-icon-quiet { color: #808087; }
+/* The step that actually closes windows carries the warning colour; reviewing stays neutral-blue. */
+.matci-destructive-button { color: #ffffff; background-color: #ff4245; font-weight: 600; }
+.matci-destructive-button:hover { color: #ffffff; background-color: #b42318; }
+.matci-destructive-button:focus { box-shadow: inset 0 0 0 2px #f5f5f7; }
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StLabel { font-feature-settings: "tnum"; }
 .matci-panel-status StIcon { color: #a1a1a8; }
