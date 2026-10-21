@@ -1,3 +1,4 @@
+import Atk from 'gi://Atk';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -74,6 +75,8 @@ export default class Matci extends Extension {
         this._suggestStart = null;
         this._suggestCooldown = 0;
         this._suggestArmed = true;
+        this._suggestion = null;
+        this._renderedSignature = null;
         this._root = new St.BoxLayout({vertical: true, reactive: false, can_focus: false,
             style_class: 'matci-notch', clip_to_allocation: true,
             accessible_name: 'matci 메모리 노치'});
@@ -128,6 +131,7 @@ export default class Matci extends Extension {
             delay: ms => this._delay(ms), onState: (status, message) => {
                 // The outcome keeps its own text; the next sample's '관측 갱신됨' must not erase it.
                 this._message = message; this._actionMessage = message; this._actionStatus = status; this._render();
+                if (status !== 'observing') this._announce(message);
             }});
         this._connect(Main.panel, 'destroy', () => this._beginShellShutdown());
         this._connect(this._root, 'destroy', () => this._beginShellShutdown());
@@ -230,6 +234,7 @@ export default class Matci extends Extension {
     _expand(manual = false) {
         if (!this._dock.claim(manual ? 100 : 30)) return;
         if (manual && this._eventTimer) { GLib.source_remove(this._eventTimer); this._eventTimer = 0; }
+        if (manual) this._suggestion = null;
         this._returnWindow = global.display.get_focus_window();
         this._expanded = true;
         this._rowOrder = [];
@@ -252,6 +257,7 @@ export default class Matci extends Extension {
     }
     _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
+        this._suggestion = null;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
         if (!this._actions?.busy) this._actionStatus = this._actionMessage = null;
         if (!keepReview) this._selected.clear();
@@ -445,6 +451,13 @@ export default class Matci extends Extension {
             GLib.source_remove(this._closingTimer);
             this._closingTimer = 0;
         }
+        // With keyboard focus in the list, a sample that changes nothing visible must not rebuild the
+        // rows: a rebuild re-grabs focus and makes Orca read the same row every 5 seconds.
+        if (this._expanded && this._renderedExpanded && isActorWithin(global.stage.get_key_focus(), this._root) &&
+            this._listSignature() === this._renderedSignature) {
+            this._updatePanel();
+            return;
+        }
         if (!this._expanded && this._renderedExpanded && this._interface.get_boolean('enable-animations')) {
             // Keep the current content for the short reverse morph; clipping follows the shrinking surface.
             // Controls stop accepting input as soon as the expanded state is dismissed.
@@ -524,6 +537,14 @@ export default class Matci extends Extension {
             this._root.add_child(header);
 
             if (!memory) this._root.add_child(this._problemCard());
+            if (this._suggestion) {
+                const banner = new St.BoxLayout({style_class: 'matci-suggestion'});
+                banner.add_child(new St.Icon({icon_name: 'dialog-information-symbolic', icon_size: 14,
+                    style_class: 'matci-suggestion-icon', y_align: Clutter.ActorAlign.START}));
+                const words = this._label(`${this._suggestion} · 닫을 앱을 골라 보세요. 자동으로 닫지 않습니다.`, 'matci-status');
+                banner.add_child(words);
+                this._root.add_child(banner);
+            }
             const metric = new St.BoxLayout({style_class: 'matci-metric-row', visible: Boolean(memory)});
             // Both sit on the row's bottom edge; the detail's CSS padding lifts it onto the figure's baseline.
             const usedMetric = this._label(percent(memory?.used_ratio), 'matci-metric');
@@ -618,8 +639,9 @@ export default class Matci extends Extension {
                     const partial = lowAccuracy({kind, coverage, approximate});
                     const ages = (group.members ?? group.processes).map(p => p.metric_age_ms);
                     const tree = count > 1 ? `프로세스 ${count}개` : '';
+                    // Only an old value is worth reading out; '3초 전 관측' on every row was noise.
                     const age = ages.length && ages.every(Number.isFinite) ?
-                        `${Math.round(Math.max(...ages) / 1000)}초 전 관측` : '관측 시각 미확인';
+                        Math.max(...ages) > 30000 ? '값이 오래됨' : '' : '관측 시각 미확인';
                     const row = new St.BoxLayout({style_class: 'matci-app-row'});
                     const selected = this._selected.has(group.appId);
                     // The focusable row carries what the row no longer prints: metric kind, age, protection reason.
@@ -628,8 +650,10 @@ export default class Matci extends Extension {
                         x_expand: true, can_focus: !this._actions.busy, reactive: !this._actions.busy,
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
                             `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}, ` +
-                            `메모리 ${bytes(value)}${tree ? `, 하위 ${tree} 합계` : ''}, ${metricKind(kind)}, ${age}` +
-                            `${partial ? ', 부분 측정' : ''}`});
+                            `메모리 ${bytes(value)}${tree ? `, 하위 ${tree} 합계` : ''}, ${metricKind(kind)}${age ? `, ${age}` : ''}` +
+                            `${partial ? ', 부분 측정' : ''}`,
+                        // Exposes the checked state to screen readers instead of only spelling it out.
+                        toggle_mode: !reason, checked: selected});
                     select._matciAppId = group.appId;
                     // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
                     select.connect('key-focus-in', () => {
@@ -689,7 +713,7 @@ export default class Matci extends Extension {
             }
             ensureStyle(this._root);
             const [, listNatural] = list.get_preferred_height(innerWidth);
-            const listHeight = Math.min(190, Math.max(1, Math.ceil(listNatural),
+            const listHeight = Math.min(260, Math.max(1, Math.ceil(listNatural),
                 displayedGroups ? 18 + displayedGroups * 42 : 0));
             scroll.set_policy(St.PolicyType.NEVER,
                 displayedGroups > 4 || listNatural > listHeight + 1 ? St.PolicyType.AUTOMATIC : St.PolicyType.NEVER);
@@ -757,6 +781,7 @@ export default class Matci extends Extension {
             }
         }
         this._renderedExpanded = this._expanded;
+        this._renderedSignature = this._expanded ? this._listSignature() : null;
         if (this._expanded && previousScroll > 0) {
             const scroll = this._scrollView;
             let attempts = 0;
@@ -791,6 +816,20 @@ export default class Matci extends Extension {
             else this._focusPrimary();
         }
     }
+    // What the expanded notch shows, coarsened to what a reader would notice (0.1 GB, whole %).
+    _listSignature() {
+        const snapshot = this._snapshot;
+        const memory = (this._panelSnapshot ?? snapshot)?.memory;
+        const ready = Boolean(snapshot) && !this._detailPaused && !this._detailLoading;
+        const groups = ready && snapshot.mode === 'live' ? this._groups(snapshot) : [];
+        const metrics = appMetrics(groups, {truncated: Boolean(snapshot?.truncated)});
+        return JSON.stringify([percent(memory?.used_ratio), Math.round((memory?.available_bytes ?? 0) / 1e8),
+            (snapshot?.pressure?.some_avg10 ?? 0) >= 1, this._message, this._actionStatus, this._actionMessage,
+            this._suggestion, this._detailLoading, this._detailPaused, this._detailError, this._versionMismatch,
+            Boolean(this._worker), [...this._selected], this._actions?.review?.id ?? null, this._actions?.busy,
+            groups.map((group, index) => [group.appId, Math.round((metrics[index].value ?? -1) / 1e8),
+                metrics[index].count, this._protection(group, snapshot)])]);
+    }
     _review() {
         if (!this._snapshot || this._detailLoading || this._detailPaused || this._actions.busy) return;
         if (!this._dock.claim(100)) return;
@@ -817,22 +856,35 @@ export default class Matci extends Extension {
     _suggest(snapshot) {
         if (!this._settings.get_boolean('auto-suggestions') || snapshot.mode !== 'live' || this._actions.busy) return;
         const ratio = snapshot.memory?.used_ratio;
+        const psi = snapshot.pressure?.some_avg10;
         const now = this._now();
         const threshold = this._settings.get_int('threshold') / 100;
         if (!Number.isFinite(ratio)) { this._suggestStart = null; return; }
-        if (ratio < Math.max(0, threshold - .10)) { this._suggestArmed = true; this._suggestStart = null; return; }
-        if (ratio < threshold) { this._suggestStart = null; return; }
+        // High usage alone is often cache; real stalls (PSI some >= 5%) count even below the threshold.
+        const stalled = Number.isFinite(psi) && psi >= 5;
+        if (ratio < Math.max(0, threshold - .10) && !stalled && !(psi >= 1)) { this._suggestArmed = true; this._suggestStart = null; return; }
+        if (ratio < threshold && !stalled) { this._suggestStart = null; return; }
         if (this._suggestStart === null) this._suggestStart = now;
         if (this._suggestArmed && now - this._suggestStart >= 30000 && now >= this._suggestCooldown && !this._expanded) {
-            this._suggestArmed = false; this._suggestCooldown = now + 600000;
-            this._message = '메모리 사용이 30초 이상 높습니다. 확인을 제안합니다. 자동으로 앱을 닫지 않습니다.';
+            this._suggestion = stalled ? `메모리가 부족해 작업이 지연되는 중 · RAM ${percent(ratio)}` :
+                `RAM ${percent(ratio)} · 30초 넘게 기준(${percent(threshold)}) 이상`;
             this._expand(false); // Priority 30 cannot steal a manual review or keyboard focus.
-            if (this._expanded) this._eventTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 6000, () => {
+            // Arm the cooldown only once the suggestion is really on screen; a blocked claim retries next sample.
+            if (!this._expanded) { this._suggestion = null; return; }
+            this._suggestArmed = false; this._suggestCooldown = now + 600000;
+            this._announce(`메모리 확인 제안. ${this._suggestion}. 앱을 자동으로 닫지 않습니다.`);
+            this._render();
+            this._eventTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 15000, () => {
                 this._eventTimer = 0;
                 if (!this._actions.review && !this._actions.busy && !this._selected.size) this._collapse();
                 return GLib.SOURCE_REMOVE;
             });
         }
+    }
+    // Screen-reader announcement for events that happen away from focus (same mechanism as Archsport).
+    _announce(text) {
+        try { this._root?.get_accessible()?.emit('notification', text, Atk.Live.POLITE); }
+        catch (_error) { /* ATK notification support varies across Shell and Orca versions. */ }
     }
     _startWorker() {
         if (!this._enabled || this._sleeping || this._worker) return;

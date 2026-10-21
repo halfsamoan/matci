@@ -50,11 +50,21 @@ export default class MatciPreferences extends ExtensionPreferences {
         const notch = new Adw.PreferencesGroup({title: '표시', description: '상단 패널 아래에 표시합니다. 시스템 애니메이션 설정을 따릅니다.'});
         page.add(notch);
         switchRow(notch, 'show-notch', '노치로 상세 보기', '끄면 패널에 RAM 사용률만 표시합니다');
-        const shortcut = new Adw.ActionRow({title: '열기/닫기 단축키', use_markup: false});
+        // The numpad keys are grabbed from every app (with NumLock on, '.' too), so they can be turned off.
+        const shortcut = new Adw.SwitchRow({title: '숫자패드 단축키', use_markup: false,
+            active: settings.get_strv('matci-toggle-shortcut').length > 0});
         const updateShortcut = () => {
             const labels = settings.get_strv('matci-toggle-shortcut').map(shortcutLabel).filter(Boolean);
-            shortcut.subtitle = labels.length ? labels.join(' 또는 ') : '설정되지 않음';
+            shortcut.subtitle = labels.length ? `${labels.join(' 또는 ')} · 켜 두면 다른 앱에서 이 키를 쓸 수 없습니다` :
+                '꺼짐 · RAM 패널 버튼으로 엽니다';
+            if (shortcut.active !== labels.length > 0) shortcut.active = labels.length > 0;
         };
+        shortcut.connect('notify::active', () => {
+            const current = settings.get_strv('matci-toggle-shortcut');
+            if (shortcut.active && !current.length)
+                settings.set_strv('matci-toggle-shortcut', settings.get_default_value('matci-toggle-shortcut').deep_unpack());
+            else if (!shortcut.active && current.length) settings.set_strv('matci-toggle-shortcut', []);
+        });
         updateShortcut(); notch.add(shortcut);
         switchRow(notch, 'hide-fullscreen', '전체화면에서 숨기기');
         const count = Math.min(32, Gdk.Display.get_default()?.get_monitors().get_n_items() ?? 1);

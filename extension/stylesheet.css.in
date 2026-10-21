@@ -28,7 +28,7 @@
 .matci-meter-fill { border-radius: 3px; background-color: {{color.labelSecondary}}; }
 .matci-meter-warning { background-color: {{color.accentWarning}}; }
 .matci-meter-rest { background-color: transparent; }
-.matci-scroll { min-height: 0px; max-height: 190px; }
+.matci-scroll { min-height: 0px; max-height: 260px; }
 .matci-scroll StScrollBar { -slider-width: 2px; }
 .matci-scroll StScrollBar StBin#trough { background-color: transparent; }
 .matci-list { spacing: {{spacing.xs}}px; padding-top: 2px; }
@@ -78,6 +78,11 @@
 .matci-problem-title { color: {{color.labelPrimary}}; font-size: {{typography.secondary}}px; font-weight: 600; }
 .matci-problem-icon { color: {{color.accentWarning}}; }
 .matci-problem-icon-quiet { color: {{color.labelTertiary}}; }
+/* Buttons inside a card get their own wash; the elevated fill matched the card and vanished. */
+.matci-problem .matci-button { background-color: {{color.pressedWash}}; }
+.matci-problem .matci-button:hover { background-color: {{color.surfacePressed}}; }
+.matci-suggestion { spacing: {{spacing.sm}}px; padding: 8px 10px; border-radius: 10px; background-color: {{color.surfaceTrack}}; }
+.matci-suggestion-icon { color: {{color.labelSecondary}}; }
 /* The step that actually closes windows carries the warning colour; reviewing stays neutral-blue. */
 .matci-destructive-button { color: #ffffff; background-color: {{color.accentCritical}}; font-weight: 600; }
 .matci-destructive-button:hover { color: #ffffff; background-color: {{color.accentCriticalLight}}; }
