@@ -89,7 +89,9 @@ export default class Matci extends Extension {
         this._indicator.can_focus = true;
         this._indicator.add_style_class_name('matci-panel-button');
         const panelStatus = new St.BoxLayout({style_class: 'matci-panel-status'});
-        this._indicatorIcon = new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 14});
+        // A RAM module says what the percentage measures; the stock monitor icon read as CPU.
+        this._ramIcon = Gio.icon_new_for_string(GLib.build_filenamev([this.path, 'icons', 'matci-ram-symbolic.svg']));
+        this._indicatorIcon = new St.Icon({gicon: this._ramIcon, icon_size: 16});
         this._indicatorLabel = new St.Label({text: '—', y_align: Clutter.ActorAlign.CENTER});
         panelStatus.add_child(this._indicatorIcon);
         panelStatus.add_child(this._indicatorLabel);
@@ -196,7 +198,11 @@ export default class Matci extends Extension {
         if (!this._enabled || this._shellEnding) return;
         const value = percent((this._panelSnapshot ?? this._snapshot)?.memory?.used_ratio);
         this._indicatorLabel.text = this._versionMismatch ? '!' : value;
-        this._indicatorIcon.icon_name = this._versionMismatch ? 'dialog-warning-symbolic' : 'utilities-system-monitor-symbolic';
+        this._indicatorIcon.gicon = this._versionMismatch ? Gio.ThemedIcon.new('dialog-warning-symbolic') : this._ramIcon;
+        // Orange only under real memory pressure (PSI), the same rule as the meter in the notch.
+        const psi = (this._panelSnapshot ?? this._snapshot)?.pressure?.some_avg10;
+        if (Number.isFinite(psi) && psi >= 1 && !this._versionMismatch) this._indicatorIcon.add_style_class_name('matci-panel-warning');
+        else this._indicatorIcon.remove_style_class_name('matci-panel-warning');
         this._indicator.accessible_name = this._versionMismatch ? `matci 오류 · ${this._message}` :
             `matci RAM ${value}. 상세 ${this._expanded ? '접기' : '열기'}`;
     }
@@ -1014,7 +1020,7 @@ export default class Matci extends Extension {
                 this._indicator.destroy();
             } catch (_error) { /* Shell already owns actor disposal */ }
         }
-        this._surface = this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = null;
+        this._surface = this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = this._ramIcon = null;
         // Destroyed row/control wrappers must not outlive the disabled extension (e.g. lock screen).
         this._rowButtons?.clear(); this._roleButtons?.clear(); this._scrollView = null;
         this._settings = this._interface = this._actions = null;

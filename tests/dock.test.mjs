@@ -140,7 +140,7 @@ test('blue marks focus and the primary action; orange marks real warnings only',
     const css = readFileSync(new URL('../extension/stylesheet.css.in', import.meta.url), 'utf8');
     for (const line of css.split('\n')) {
         if (/color\.(focus|actionPrimary|actionHover)\}\}/.test(line)) assert.match(line, /:focus|matci-primary-button/);
-        if (line.includes('{{color.accentWarning}}')) assert.match(line, /^\.matci-(protected|meter-warning|problem-icon) /);
+        if (line.includes('{{color.accentWarning}}')) assert.match(line, /^\.matci-(protected|meter-warning|problem-icon|panel-status) /);
     }
 });
 

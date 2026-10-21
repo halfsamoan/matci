@@ -85,4 +85,5 @@
 .matci-panel-status { spacing: 4px; }
 .matci-panel-status StLabel { font-feature-settings: "tnum"; }
 .matci-panel-status StIcon { color: #a1a1a8; }
+.matci-panel-status StIcon.matci-panel-warning { color: #ff9230; }
 .matci-panel-button:focus .matci-panel-status { background-color: rgba(255, 255, 255, 0.07); box-shadow: inset 0 0 0 2px #0a84ff; border-radius: 8px; }
