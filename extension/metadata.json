@@ -4,5 +4,5 @@
   "description": "Panel-first system memory overview and explicit normal window-close requests.",
   "shell-version": ["50"],
   "settings-schema": "org.gnome.shell.extensions.matci",
-  "version": 21
+  "version": 22
 }
