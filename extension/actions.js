@@ -79,8 +79,10 @@ export class CloseController {
             const status = !remaining.length ? 'completed' : results.some(i => i.result === 'window_closed') ? 'partial' : 'timeout';
             const finalAck = await receipt(status, results, after);
             const delta = finalAck.receipt?.observed_delta;
-            const observation = Number.isFinite(delta) ? ` 가용 메모리 차이 ${delta >= 0 ? '+' : '−'}${(Math.abs(delta) / 1048576).toFixed(0)} MiB (전체 시스템 관측값).` : '';
-            this.a.onState(status, (status === 'completed' ? '선택한 창이 닫혔습니다. 백그라운드 프로세스는 남을 수 있습니다.' : '남아 있는 창이 있습니다. 취소/응답 지연을 구별할 수 없습니다.') + observation);
+            // MemAvailable moves with everything else on the system, so it is never called "freed".
+            const observation = Number.isFinite(delta) ? ` 가용 메모리 ${delta >= 0 ? '+' : '−'}${(Math.abs(delta) / 1073741824).toFixed(2)} GB (다른 작업 영향 포함).` : '';
+            this.a.onState(status, (status === 'completed' ? '선택한 창을 닫았습니다. 트레이에 남는 앱은 메모리를 계속 쓸 수 있습니다.' :
+                '아직 열린 창이 있습니다. 앱이 저장 여부를 묻고 있을 수 있습니다.') + observation);
             return status;
         } catch (error) {
             if (requested && review.epoch === this.epoch) {

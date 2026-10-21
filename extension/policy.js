@@ -28,15 +28,17 @@ export function protection(group, snapshot, ownerUid, protectedIds = [], age = 0
     if (snapshot?.mode !== 'live') return '시연 데이터 · 실제 창 제어 없음';
     if (!group?.appId || !group.windows?.length || !group.processes?.length)
         return '현재 앱/창 매핑 불명확';
-    if (BUILTIN_IDS.includes(group.appId) || DEV.test(group.appId) || protectedIds.includes(group.appId))
-        return '시스템·개발 도구 또는 사용자 보호 앱';
+    // Each reason names the one thing that applies, so a locked row says why in plain words.
+    if (protectedIds.includes(group.appId)) return '내가 보호한 앱';
+    if (BUILTIN_IDS.includes(group.appId) || DEV.test(group.appId)) return '터미널·편집기·개발 도구는 닫지 않음';
     if (snapshot.truncated) return '프로세스 목록 일부만 관측됨';
     if (age < 0 || age > 5000) return '신원 관측이 오래됨 · 새로고침 필요';
     for (const p of group.processes) {
         if (!Number.isInteger(p.pid) || p.pid <= 0 || !Number.isInteger(p.uid) || p.uid !== ownerUid ||
             !Number.isInteger(p.start_ticks) || p.start_ticks <= 0) return '유효한 동일 사용자 신원 없음';
         if (snapshot.health === 'error' || snapshot.boot_id === 'unavailable') return '현재 관측을 확인할 수 없음';
-        if (p.protection_reason || p.has_work_descendants || DEV.test(p.comm ?? '')) return '보호 프로세스 또는 실행 중 작업 포함';
+        if (p.protection_reason || DEV.test(p.comm ?? '')) return '보호 대상 프로세스가 창을 소유';
+        if (p.has_work_descendants) return '하위 작업 실행 중 (에이전트·터미널·빌드 등)';
         const identityAge = snapshot.monotonic_ms - p.identity_observed_monotonic_ms + age;
         if (!Number.isFinite(identityAge) || identityAge < 0 || identityAge > 5000) return '프로세스 신원 재확인 필요';
         if (!(snapshot.processes ?? []).some(current => keyOf(current) === keyOf(p))) return '프로세스 신원 변경';
@@ -44,21 +46,47 @@ export function protection(group, snapshot, ownerUid, protectedIds = [], age = 0
     return null;
 }
 
-// One value per app row, summed within a single metric kind. PSS splits shared pages and RSS
-// counts them whole (an upper bound).
-export function appMetrics(groups) {
-    const rows = groups.map(({processes}) => {
-        const kinds = new Set(processes.map(p => p.metric_kind));
-        const kind = kinds.size === 1 ? [...kinds][0] : null;
-        const value = kind && processes.every(p => Number.isFinite(p.memory_bytes)) ?
-            processes.reduce((sum, p) => sum + p.memory_bytes, 0) : null;
-        const coverage = kinds.size === 1 && processes.length &&
-            processes.every(p => p.coverage === 'complete') ? 'complete' : 'partial';
-        return {kind, value, coverage};
+// Display-only membership: each app's window process plus its descendant tree (Firefox content
+// processes, Electron renderers/zygotes), stopping at another app's window process so a browser
+// launched from a terminal stays its own row. Close identity keeps using group.processes.
+// ponytail: crash handlers reparented to systemd --user (~4 MB per app) fall outside the tree.
+export function attachMembers(groups, processes, windowPids) {
+    const children = new Map();
+    for (const process of processes) {
+        if (!children.has(process.ppid)) children.set(process.ppid, []);
+        children.get(process.ppid).push(process);
+    }
+    for (const group of groups) {
+        const roots = new Set(group.processes.map(p => p.pid));
+        const members = new Map();
+        const stack = [...group.processes];
+        while (stack.length) {
+            const process = stack.pop();
+            if (members.has(keyOf(process))) continue;
+            members.set(keyOf(process), process);
+            for (const child of children.get(process.pid) ?? []) {
+                if (windowPids.has(child.pid) && !roots.has(child.pid)) continue;
+                stack.push(child);
+            }
+        }
+        group.members = [...members.values()];
+    }
+    return groups;
+}
+
+// One value per app row: the PSS sum of its members (PSS splits shared pages, so the rows do not
+// double count). Members without PSS yet add their RSS, an upper bound, and mark the row partial.
+export function appMetrics(groups, {truncated = false} = {}) {
+    return groups.map(group => {
+        const members = group.members ?? group.processes;
+        const kinds = new Set(members.map(p => p.metric_kind));
+        const kind = !members.length ? null : kinds.size === 1 ? [...kinds][0] : 'mixed';
+        const value = members.length && members.every(p => Number.isFinite(p.memory_bytes)) ?
+            members.reduce((sum, p) => sum + p.memory_bytes, 0) : null;
+        const coverage = !truncated && kind !== 'mixed' && members.length &&
+            members.every(p => p.coverage === 'complete') ? 'complete' : 'partial';
+        return {kind, value, coverage, count: members.length, approximate: kind === 'mixed'};
     });
-    const shown = new Set(rows.filter(row => row.value !== null).map(row => row.kind));
-    const mixed = shown.has('pss') && shown.has('rss');
-    return rows.map(row => ({...row, approximate: mixed && row.kind === 'rss' && row.value !== null}));
 }
 
 export function lowAccuracy(row) {

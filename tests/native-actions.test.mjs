@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CloseController} from '../extension/actions.js';
-import {protection, sameTargets, interactionAge, takeLines, appMetrics, lowAccuracy, healthText} from '../extension/policy.js';
+import {protection, sameTargets, interactionAge, takeLines, appMetrics, attachMembers, lowAccuracy, healthText} from '../extension/policy.js';
 
 const extensionSource = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
 
@@ -14,8 +14,8 @@ test('re-enable keeps worker generations monotonic', () => {
     assert.doesNotMatch(extensionSource, /this\._generation = 0;/);
 });
 test('new enable and idle collapse clear stale action status', () => {
-    assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._panelSnapshot = null;[\s\S]*?this\._receivedAt = 0;[\s\S]*?this\._actionStatus = null;/);
-    assert.match(extensionSource, /if \(!this\._actions\?\.busy\) this\._actionStatus = null;/);
+    assert.match(extensionSource, /this\._snapshot = null;\n\s+this\._panelSnapshot = null;[\s\S]*?this\._receivedAt = 0;[\s\S]*?this\._actionStatus = this\._actionMessage = null;/);
+    assert.match(extensionSource, /if \(!this\._actions\?\.busy\) this\._actionStatus = this\._actionMessage = null;/);
 });
 test('expanded matci requests full detail and light snapshots never replace app-action data', () => {
     assert.match(extensionSource, /this\._setDetail\(true\)/);
@@ -199,18 +199,38 @@ test('post-ack fresh sampling respects the real worker 250ms rate limit', async 
 
 test('RSS and incomplete rows are identified as partial measurements', () => {
     const p = (metric_kind, memory_bytes, coverage = 'complete') => ({metric_kind, memory_bytes, coverage});
-    const mixed = appMetrics([{processes: [p('pss', 2), p('pss', 3)]}, {processes: [p('rss', 7)]},
+    const rows = appMetrics([{processes: [p('pss', 2), p('pss', 3)]}, {processes: [p('rss', 7)]},
         {processes: [p('pss', 1), p('rss', 1)]}, {processes: []}]);
-    assert.deepEqual(mixed.map(row => [row.kind, row.value, row.approximate, row.coverage]),
-        [['pss', 5, false, 'complete'], ['rss', 7, true, 'complete'], [null, null, false, 'partial'],
+    assert.deepEqual(rows.map(row => [row.kind, row.value, row.approximate, row.coverage]),
+        [['pss', 5, false, 'complete'], ['rss', 7, false, 'complete'], ['mixed', 2, true, 'partial'],
             [null, null, false, 'partial']]);
-    assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('rss', 2)]}]).every(row => !row.approximate));
-    // A mixed group prints no value, so it cannot make the others look mixed.
-    assert.ok(appMetrics([{processes: [p('rss', 7)]}, {processes: [p('pss', 1), p('rss', 1)]}]).every(row => !row.approximate));
-    assert.equal(lowAccuracy(mixed[0]), false);
-    assert.equal(lowAccuracy(mixed[1]), true);
-    assert.equal(lowAccuracy({...mixed[0], approximate: true}), true);
-    assert.equal(lowAccuracy({...mixed[0], coverage: 'partial'}), true);
+    assert.equal(lowAccuracy(rows[0]), false);
+    assert.equal(lowAccuracy(rows[1]), true);
+    assert.equal(lowAccuracy(rows[2]), true);
+    assert.equal(lowAccuracy({...rows[0], coverage: 'partial'}), true);
+    // A truncated process list can hide members, so every row becomes a partial measurement.
+    assert.equal(appMetrics([{processes: [p('pss', 2)]}], {truncated: true})[0].coverage, 'partial');
+});
+
+test('an app row sums its process tree but stops at another app and keeps close identity', () => {
+    const proc = (pid, ppid, memory_bytes = 1) => ({uid: 1000, pid, ppid, start_ticks: pid, memory_bytes,
+        metric_kind: 'pss', coverage: 'complete'});
+    // terminal(1) -> shell(2) -> firefox(3) -> forkserver(4) -> content(5, 6); firefox is its own app.
+    const processes = [proc(1, 0, 10), proc(2, 1, 1), proc(3, 2, 500), proc(4, 3, 20), proc(5, 4, 700), proc(6, 4, 600)];
+    const terminal = {processes: [processes[0]]};
+    const firefox = {processes: [processes[2]]};
+    attachMembers([terminal, firefox], processes, new Set([1, 3]));
+    assert.deepEqual(firefox.members.map(p => p.pid).sort(), [3, 4, 5, 6]);
+    assert.deepEqual(terminal.members.map(p => p.pid).sort(), [1, 2]);
+    const [termRow, foxRow] = appMetrics([terminal, firefox]);
+    assert.deepEqual([termRow.value, termRow.count, foxRow.value, foxRow.count], [11, 2, 1820, 4]);
+    // The close gate still compares only the window process: a new content process changes nothing.
+    assert.deepEqual(firefox.processes.map(p => p.pid), [3]);
+    const replaced = [...processes.slice(0, 5), proc(7, 4, 650)];
+    const again = {processes: [replaced[2]]};
+    attachMembers([again], replaced, new Set([1, 3]));
+    assert.ok(sameTargets([{...firefox, windows: []}], [{...again, appId: undefined, windows: []}]));
+    assert.deepEqual(again.members.map(p => p.pid).sort(), [3, 4, 5, 7]);
 });
 
 test('partial health never names a cause; the panel only reports a visibly missing value', () => {

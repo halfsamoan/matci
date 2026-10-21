@@ -92,6 +92,25 @@ class ProcFixtureTests(unittest.TestCase):
         self.assertEqual(classify('chrome.desktop', [process], requested_classification='candidate'),
                          ('protected', 'WORK_DESCENDANT'))
 
+    def test_busy_same_binary_helper_does_not_lock_its_app(self):
+        # Firefox: main -> forkserver -> content process, all one binary; a busy tab is not outside work.
+        for pid, ppid in ((10, 1), (11, 10), (12, 11)):
+            directory = self.process(pid=pid, comm='firefox', ppid=ppid)
+            (directory / 'exe').symlink_to('/snap/firefox/current/usr/lib/firefox/firefox')
+        self.sample()
+        self.now += 1000
+        (self.root / '12' / 'stat').write_text(stat_line(12, 'firefox', 11, ticks=200))
+        processes = {p['pid']: p for p in self.sample()['processes']}
+        self.assertFalse(processes[10]['has_work_descendants'])
+        self.assertFalse(processes[11]['has_work_descendants'])
+        # A different binary doing the work (an agent or compiler) still protects the app.
+        directory = self.process(pid=13, comm='helper', ppid=10)
+        (directory / 'exe').symlink_to('/usr/bin/python3')
+        self.sample()
+        self.now += 1000
+        (self.root / '13' / 'stat').write_text(stat_line(13, 'helper', 10, ticks=200))
+        self.assertTrue({p['pid']: p for p in self.sample()['processes']}[10]['has_work_descendants'])
+
     def test_disappearing_process_is_skipped_and_sample_complete(self):
         directory = self.process()
         (directory / 'stat').unlink()
@@ -185,17 +204,18 @@ class ProcFixtureTests(unittest.TestCase):
         sample = self.sample()
         self.assertEqual(len(sample['processes']), 256)
         self.assertTrue(sample['truncated'])
-        self.assertEqual(sum(p['metric_kind'] == 'pss' for p in sample['processes']), 20)
+        self.assertEqual(sum(p['metric_kind'] == 'pss' for p in sample['processes']), procfs_module.PSS_BUDGET)
 
     def test_pss_budget_prefers_largest_rss(self):
-        for pid in range(10, 36):
+        budget = procfs_module.PSS_BUDGET
+        for pid in range(10, 16 + budget):
             self.process(pid=pid, pages=1000 - pid)
         sample = self.sample()
         pss_pids = {process['pid'] for process in sample['processes'] if process['metric_kind'] == 'pss'}
-        self.assertEqual(pss_pids, set(range(10, 30)))
+        self.assertEqual(pss_pids, set(range(10, 10 + budget)))
 
     def test_pss_budget_limit_per_sample(self):
-        for pid in range(10, 40):
+        for pid in range(10, 20 + procfs_module.PSS_BUDGET):
             self.process(pid=pid, pages=1000 - pid)
         original = procfs_module.read_text
         smaps_reads = 0
@@ -208,7 +228,7 @@ class ProcFixtureTests(unittest.TestCase):
 
         with patch('matci.procfs.read_text', side_effect=count_smaps):
             self.sample()
-        self.assertLessEqual(smaps_reads, 20)
+        self.assertLessEqual(smaps_reads, procfs_module.PSS_BUDGET)
 
     def test_pss_cache_ttl_30s(self):
         self.process()

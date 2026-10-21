@@ -117,7 +117,7 @@ test('app rows print values only; metric kind and age stay in the accessible nam
     const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
     assert.doesNotMatch(source, /GiB|toUpperCase\(\)/);
     assert.ok(source.includes("this._label(bytes(value), 'matci-app-metric')"));
-    assert.match(source, /메모리 \$\{bytes\(value\)\}, \$\{metricKind\(kind\)\}, \$\{age\}/);
+    assert.match(source, /메모리 \$\{bytes\(value\)\}\$\{tree \? `, 하위 \$\{tree\} 합계` : ''\}, \$\{metricKind\(kind\)\}, \$\{age\}/);
     assert.ok(!source.includes("'보호'"));
 });
 

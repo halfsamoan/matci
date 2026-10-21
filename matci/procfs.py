@@ -7,7 +7,10 @@ import re
 from .model import MAX_PROCESSES, monotonic_ms, new_id, utc_now, process_key
 from .policy import builtin_process_reason
 
-PSS_BUDGET = 20
+# Per-sample smaps_rollup reads while the list is open. 48 covers every sizeable process of a
+# multi-process browser/Electron tree within the first sample (a full ~150-process pass measured
+# 0.57 s); the 30 s cache keeps later samples cheap.
+PSS_BUDGET = 48
 PSS_TTL_MS = 30000
 PSS_FAIL_TTL_MS = 60000
 
@@ -136,6 +139,9 @@ class ProcCollector:
             self.pss_fail_cache.clear()
             self.boot_id = boot_id
         processes, new_previous, pss_candidates = [], {}, []
+        # Executable per process, kept private (never in the snapshot): a busy helper running the
+        # same binary as its ancestor is the app's own renderer/content process, not outside work.
+        executables = {}
         truncated, inaccessible = False, False
         try:
             entries = sorted((p for p in self.root.iterdir() if p.name.isdecimal()),
@@ -186,6 +192,10 @@ class ProcCollector:
                            'protection_reason': builtin_process_reason(stat['comm'])}
                 processes.append(process)
                 new_previous[key] = (now, stat['cpu_ticks'])
+                try:
+                    executables[stat['pid']] = os.readlink(entry / 'exe')
+                except OSError:
+                    executables[stat['pid']] = None
             except (FileNotFoundError, ProcessLookupError):
                 # A process that exited during any read cannot own a live descendant.
                 continue
@@ -255,11 +265,16 @@ class ProcCollector:
             self.pss_fail_cache.pop(key, None)
         by_pid = {p['pid']: p for p in processes}
         for process in processes:
-            if process['protection_reason'] or (process['cpu_fraction_one_core'] or 0) > 0.02:
+            protected = bool(process['protection_reason'])
+            if protected or (process['cpu_fraction_one_core'] or 0) > 0.02:
+                own = executables.get(process['pid'])
                 parent, seen = by_pid.get(process['ppid']), set()
                 while parent and parent['pid'] not in seen:
                     seen.add(parent['pid'])
-                    parent['has_work_descendants'] = True
+                    # Protection always propagates; CPU alone only marks ancestors running a
+                    # different (or unknown) executable, so Firefox's busy tab does not lock Firefox.
+                    if protected or own is None or executables.get(parent['pid']) != own:
+                        parent['has_work_descendants'] = True
                     parent = by_pid.get(parent['ppid'])
         self.previous = new_previous
         self.pss_cache = {key: value for key, value in self.pss_cache.items() if key in new_previous}

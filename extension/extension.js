@@ -14,7 +14,7 @@ import {isActorWithin} from './dockModel.js';
 import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
-import {protection, appView, appMetrics, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
+import {protection, appView, appMetrics, attachMembers, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
 
 const MAX_LINE = 262144;
 // Widgets measured before their first style pass report short heights; style the tree first.
@@ -25,7 +25,8 @@ const ensureStyle = actor => {
 // 2^30-byte values labelled GB, as memory UIs (JEDEC, macOS Activity Monitor) do.
 const bytes = n => n === null || n === undefined ? '—' : `${(n / 1073741824).toFixed(2)} GB`;
 // Metric names stay out of the visible row; screen readers still get the kind.
-const metricKind = kind => ({pss: 'PSS 비례 배분 기준', rss: 'RSS 상주 메모리 기준'})[kind] ?? '기준 미확인';
+const metricKind = kind => ({pss: 'PSS 비례 배분 기준', rss: 'RSS 상주 메모리 기준',
+    mixed: 'PSS 기준, 일부 RSS 포함이라 실제보다 클 수 있음'})[kind] ?? '기준 미확인';
 // Must match .matci-notch padding in stylesheet.css.in. The header row centres the title on the
 // 28 px tools, so a small top pad keeps the first glyphs right under the panel.
 const PAD_TOP = 6, PAD_SIDE = 14, PAD_BOTTOM = 14;
@@ -56,7 +57,7 @@ export default class Matci extends Extension {
         this._detailRequestMode = null;
         this._detailApplying = false;
         this._detailInitialized = false;
-        this._actionStatus = null;
+        this._actionStatus = this._actionMessage = null;
         this._expanded = false;
         this._returnWindow = null;
         this._scrollView = null;
@@ -125,7 +126,8 @@ export default class Matci extends Extension {
             fresh: () => this._request('sample_now'), recordView: (s, groups) => this._recordView(s, groups),
             request: (type, body) => this._request(type, body), close: window => window.delete(global.get_current_time()),
             delay: ms => this._delay(ms), onState: (status, message) => {
-                this._message = message; this._actionStatus = status; this._render();
+                // The outcome keeps its own text; the next sample's '관측 갱신됨' must not erase it.
+                this._message = message; this._actionMessage = message; this._actionStatus = status; this._render();
             }});
         this._connect(Main.panel, 'destroy', () => this._beginShellShutdown());
         this._connect(this._root, 'destroy', () => this._beginShellShutdown());
@@ -251,7 +253,7 @@ export default class Matci extends Extension {
     _collapse(restoreFocus = false, {keepReview = false} = {}) {
         this._expanded = false;
         if (!keepReview && !this._actions?.busy) this._actions?.cancel();
-        if (!this._actions?.busy) this._actionStatus = null;
+        if (!this._actions?.busy) this._actionStatus = this._actionMessage = null;
         if (!keepReview) this._selected.clear();
         this._render();
         if (restoreFocus) this._releaseFocus();
@@ -395,6 +397,7 @@ export default class Matci extends Extension {
         const appSystem = Shell.AppSystem.get_default();
         const eventTime = global.get_current_time();
         const groups = new Map();
+        const windowPids = new Set();
         for (const app of appSystem.get_running()) {
             const appId = app?.get_id();
             if (!appId || !appSystem.lookup_app(appId)) continue;
@@ -403,6 +406,7 @@ export default class Matci extends Extension {
                 if (!groups.has(appId)) groups.set(appId, {appId, app, name: app.get_name(), windows: [], processes: [], unmapped: false});
                 const group = groups.get(appId);
                 group.windows.push(window);
+                windowPids.add(window.get_pid());
                 if (tracker.get_window_app(window)?.get_id() !== appId) group.unmapped = true;
                 const matches = snapshot.processes.filter(p => p.pid === window.get_pid());
                 if (matches.length !== 1) group.unmapped = true;
@@ -420,6 +424,9 @@ export default class Matci extends Extension {
             if (group.processes.some(p => ownership.get(keyOf(p)) > 1)) group.unmapped = true;
             if (group.unmapped) group.processes = []; // Fail closed; no fabricated metric or executable key.
         }
+        // Memory shown per row counts the whole process tree (content processes, renderers); the close
+        // gate above still keys on the window processes only, so a helper spawning mid-review is harmless.
+        attachMembers(all, snapshot.processes, windowPids);
         return all.slice(0, 100).sort((a, b) => a.name.localeCompare(b.name));
     }
     _recordView(snapshot, groups) {
@@ -555,6 +562,7 @@ export default class Matci extends Extension {
             this._root.add_child(scroll);
             const review = this._actions?.review;
             let displayedGroups = 0;
+            const unselected = [];
             let missingValues = false;
             if (review) {
                 list.add_child(this._label(`선택한 앱 ${review.groups.length}개의 창을 닫을까요?`, 'matci-section-title'));
@@ -588,7 +596,7 @@ export default class Matci extends Extension {
                 // Heaviest first, fixed when the list first appears and kept while it stays open so a
                 // 5-second sample never moves a row under the pointer; apps that appear later join below.
                 const unordered = this._groups(snapshot);
-                const unorderedMetrics = appMetrics(unordered);
+                const unorderedMetrics = appMetrics(unordered, {truncated: Boolean(snapshot.truncated)});
                 const rank = new Map(this._rowOrder.map((id, index) => [id, index]));
                 const ordered = unordered.map((group, index) => ({group, metric: unorderedMetrics[index]}))
                     .sort((a, b) => (rank.get(a.group.appId) ?? Infinity) - (rank.get(b.group.appId) ?? Infinity) ||
@@ -605,10 +613,11 @@ export default class Matci extends Extension {
                 }
                 for (const [index, group] of groups.entries()) {
                     const reason = this._protection(group, snapshot);
-                    if (reason) this._selected.delete(group.appId);
-                    const {kind, value, coverage, approximate} = rowMetrics[index];
+                    if (reason && this._selected.delete(group.appId)) unselected.push(group.name);
+                    const {kind, value, coverage, approximate, count} = rowMetrics[index];
                     const partial = lowAccuracy({kind, coverage, approximate});
-                    const ages = group.processes.map(p => p.metric_age_ms);
+                    const ages = (group.members ?? group.processes).map(p => p.metric_age_ms);
+                    const tree = count > 1 ? `프로세스 ${count}개` : '';
                     const age = ages.length && ages.every(Number.isFinite) ?
                         `${Math.round(Math.max(...ages) / 1000)}초 전 관측` : '관측 시각 미확인';
                     const row = new St.BoxLayout({style_class: 'matci-app-row'});
@@ -619,7 +628,8 @@ export default class Matci extends Extension {
                         x_expand: true, can_focus: !this._actions.busy, reactive: !this._actions.busy,
                         accessible_name: `${group.name}, ${reason ? `보호됨, ${reason}` :
                             `${selected ? '선택됨' : '선택 안 됨'}, 수동 검토 가능`}, ` +
-                            `메모리 ${bytes(value)}, ${metricKind(kind)}, ${age}${partial ? ', 부분 측정' : ''}`});
+                            `메모리 ${bytes(value)}${tree ? `, 하위 ${tree} 합계` : ''}, ${metricKind(kind)}, ${age}` +
+                            `${partial ? ', 부분 측정' : ''}`});
                     select._matciAppId = group.appId;
                     // Keyboard moves into rows below the fold; skip the unallocated focus restore after render.
                     select.connect('key-focus-in', () => {
@@ -634,8 +644,10 @@ export default class Matci extends Extension {
                     appName.clutter_text.set_line_wrap(false);
                     appName.clutter_text.set_ellipsize(Pango.EllipsizeMode.END);
                     nameColumn.add_child(appName);
-                    if (reason) {
-                        const why = this._label(reason, 'matci-app-reason');
+                    // Under the name: why it is locked, and how many processes the value adds up.
+                    const caption = [reason, tree].filter(Boolean).join(' · ');
+                    if (caption) {
+                        const why = this._label(caption, 'matci-app-reason');
                         why.clutter_text.set_line_wrap(false);
                         why.clutter_text.set_ellipsize(Pango.EllipsizeMode.END);
                         nameColumn.add_child(why);
@@ -661,9 +673,11 @@ export default class Matci extends Extension {
                 }
                 if (!groups.length) list.add_child(this._label('열린 앱 없음', 'matci-empty'));
             }
+            // A selection that became protected is dropped visibly, never silently.
+            if (unselected.length) list.add_child(this._label(`${unselected.join(', ')}: 보호 상태가 되어 선택에서 뺐습니다`, 'matci-status'));
             if (this._actionStatus) {
                 const actionText = this._actionStatus === 'observing' ? '닫기를 요청했습니다 · 창이 닫히는지 확인 중' :
-                    this._actionStatus === 'completed' ? '선택한 창을 닫았습니다 · 메모리를 다시 재는 중' : this._message;
+                    this._actionMessage ?? this._message;
                 list.add_child(this._label(actionText, 'matci-status'));
             } else if (!detailReady) {
                 // The list above already explains why app controls are unavailable.
@@ -682,7 +696,7 @@ export default class Matci extends Extension {
             scroll.set_height(listHeight);
             const controls = new St.BoxLayout({style_class: 'matci-controls'});
             if (review) {
-                controls.add_child(this._tagRole(this._button('취소', () => { this._actions.cancel(); this._actionStatus = null; this._render(); }), 'cancel'));
+                controls.add_child(this._tagRole(this._button('취소', () => { this._actions.cancel(); this._actionStatus = this._actionMessage = null; this._render(); }), 'cancel'));
                 controls.add_child(new St.Widget({x_expand: true}));
                 const confirm = this._button('창 닫기', () => this._confirm(), !this._actions.busy);
                 confirm.add_style_class_name('matci-destructive-button');
