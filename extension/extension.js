@@ -76,12 +76,6 @@ export default class Matci extends Extension {
         this._root = new St.BoxLayout({vertical: true, reactive: false, can_focus: false,
             style_class: 'matci-notch', clip_to_allocation: true,
             accessible_name: 'matci 메모리 노치'});
-        this._root.connect('key-press-event', (_actor, event) => {
-            if (event.get_key_symbol() === Clutter.KEY_Escape) {
-                this._collapse(true); return Clutter.EVENT_STOP;
-            }
-            return Clutter.EVENT_PROPAGATE;
-        });
         this._surface = createNotchSurface(this._root);
         // Tab/arrow navigation inside the notch; St drops the group when the root is destroyed.
         global.focus_manager.add_group(this._root);
@@ -134,6 +128,14 @@ export default class Matci extends Extension {
         this._connect(Main.panel, 'destroy', () => this._beginShellShutdown());
         this._connect(this._root, 'destroy', () => this._beginShellShutdown());
         this._connect(this._indicator, 'destroy', () => this._beginShellShutdown());
+        // The non-reactive root is :insensitive and never receives key events, so Escape is
+        // caught at the stage while focus is inside the notch.
+        this._connect(global.stage, 'key-press-event', (_stage, event) => {
+            if (event.get_key_symbol() !== Clutter.KEY_Escape || !isActorWithin(global.stage.get_key_focus(), this._root))
+                return Clutter.EVENT_PROPAGATE;
+            this._collapse(true);
+            return Clutter.EVENT_STOP;
+        });
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
         this._connect(Main.panel, 'notify::height', () => this._visibility());
         this._connect(Main.overview, 'showing', () => this._onOverviewShowing());
@@ -224,7 +226,12 @@ export default class Matci extends Extension {
         this._expanded = true;
         this._rowOrder = [];
         this._setDetail(true);
-        if (manual && this._dock.state.visible) this._root.grab_key_focus();
+        if (manual && this._dock.state.visible) this._focusPrimary();
+    }
+    // Opening lands on the header anchor (the memory summary is read first), never on the insensitive root.
+    _focusPrimary() {
+        const target = this._roleButtons.get('anchor') ?? this._roleButtons.get('collapse');
+        if (target?.can_focus) target.grab_key_focus();
     }
     _releaseFocus() {
         const focus = global.stage.get_key_focus();
@@ -480,7 +487,10 @@ export default class Matci extends Extension {
         if (this._expanded) {
             const header = new St.BoxLayout({style_class: 'matci-header'});
             // Title leads, tools trail at the far end (as in Archsport), all on one vertical centre.
-            const brand = new St.BoxLayout({style_class: 'matci-brand', x_expand: true});
+            // Focus anchor on open: receives Tab/Esc and is read first, but draws no ring, so a
+            // mouse open shows no stray focus box. Tab then reveals rings on rows and buttons.
+            const brand = new St.BoxLayout({style_class: 'matci-brand', x_expand: true, reactive: true, can_focus: true});
+            this._tagRole(brand, 'anchor');
             // A dead worker waiting for its restart reads as disconnected, never as "connecting".
             const disconnected = !this._worker && !this._versionMismatch;
             const stateText = demo ? '시연' : this._versionMismatch ? '업데이트 필요' : disconnected ? '연결 끊김' :
@@ -512,6 +522,8 @@ export default class Matci extends Extension {
             const memoryDetail = this._label(`가용 ${bytes(memory?.available_bytes)}`,
                 'matci-metric-detail');
             memoryDetail.accessible_name = `사용 ${bytes(usedBytes)}, 가용 ${bytes(memory?.available_bytes)}, 전체 ${bytes(memory?.total_bytes)}`;
+            brand.accessible_name = memory ? `메모리 ${percent(memory.used_ratio)} 사용, ${memoryDetail.accessible_name}` :
+                `메모리, ${this._message}`;
             memoryDetail.x_align = memoryDetail.y_align = Clutter.ActorAlign.END;
             metric.add_child(memoryDetail);
             this._root.add_child(metric);
@@ -752,7 +764,11 @@ export default class Matci extends Extension {
         if (this._expanded && focusWasInside) {
             const target = focusedAppId ? this._rowButtons.get(focusedAppId) :
                 focusedRole ? this._roleButtons.get(focusedRole) : null;
-            (target?.can_focus ? target : this._root).grab_key_focus();
+            // Entering the review moves focus to 취소, never onto the destructive 창 닫기.
+            const fallback = focusedRole === 'review' ? this._roleButtons.get('cancel') : null;
+            if (target?.can_focus) target.grab_key_focus();
+            else if (fallback?.can_focus) fallback.grab_key_focus();
+            else this._focusPrimary();
         }
     }
     _review() {

@@ -36,7 +36,11 @@ test('closing releases notch focus back to the prior application window', () => 
     assert.match(extensionSource, /import \{isActorWithin\} from '\.\/dockModel\.js';/);
     assert.match(extensionSource, /_returnWindow = global\.display\.get_focus_window\(\)/);
     assert.match(extensionSource, /_releaseFocus\(\) \{[\s\S]*?global\.stage\.set_key_focus\(null\);[\s\S]*?win\.focus\(global\.get_current_time\(\)\)/);
-    assert.match(extensionSource, /if \(manual && this\._dock\.state\.visible\) this\._root\.grab_key_focus\(\)/);
+    assert.match(extensionSource, /if \(manual && this\._dock\.state\.visible\) this\._focusPrimary\(\)/);
+    // The non-reactive root is :insensitive and gets no key events: it never holds focus, and
+    // Escape is handled at the stage while focus is inside the notch.
+    assert.doesNotMatch(extensionSource, /this\._root\.grab_key_focus\(\)/);
+    assert.match(extensionSource, /global\.stage, 'key-press-event'[\s\S]*?KEY_Escape[\s\S]*?isActorWithin\(global\.stage\.get_key_focus\(\), this\._root\)/);
     assert.match(extensionSource, /if \(restoreFocus\) this\._releaseFocus\(\)/);
     assert.doesNotMatch(extensionSource, /if \(restoreFocus\) this\._indicator\.grab_key_focus\(\)/);
     assert.match(extensionSource, /toggle\(\);\n\s+if \(!this\._expanded\) this\._indicator\.grab_key_focus\(\);/);
@@ -152,7 +156,8 @@ test('rerender retains scroll adjustment and restores the focused app or control
     assert.ok(extensionSource.includes('const focusedRole = focusedActor?._matciRole ?? null'));
     assert.ok(extensionSource.includes('this._rowButtons.set(group.appId, select)'));
     assert.ok(extensionSource.includes('adjustment.value = Math.min(previousScroll, Math.max(0, upper - pageSize))'));
-    assert.ok(extensionSource.includes('(target?.can_focus ? target : this._root).grab_key_focus()'));
+    assert.ok(extensionSource.includes("const fallback = focusedRole === 'review' ? this._roleButtons.get('cancel') : null;"));
+    assert.ok(extensionSource.includes('else this._focusPrimary();'));
 });
 test('worker stdout framing bounds raw bytes, keeps order, and is released on stop', () => {
     const decoder = new TextDecoder();

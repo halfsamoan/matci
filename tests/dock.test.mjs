@@ -124,7 +124,9 @@ test('app rows print values only; metric kind and age stay in the accessible nam
 test('header leads with the title, tools trail; figures share a baseline; primary focus shows on blue', () => {
     const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../extension/stylesheet.css.in', import.meta.url), 'utf8');
-    assert.match(source, /new St\.BoxLayout\(\{style_class: 'matci-brand', x_expand: true\}\)/);
+    // The title box doubles as the ringless focus anchor that opening lands on.
+    assert.match(source, /new St\.BoxLayout\(\{style_class: 'matci-brand', x_expand: true, reactive: true, can_focus: true\}\)/);
+    assert.doesNotMatch(css, /\.matci-brand:focus/);
     assert.match(source, /label\.x_expand = false;\n\s+label\.y_align = Clutter\.ActorAlign\.CENTER;\n\s+brand\.add_child\(label\)/);
     assert.match(source, /usedMetric\.y_align = Clutter\.ActorAlign\.END;/);
     assert.match(source, /memoryDetail\.x_align = memoryDetail\.y_align = Clutter\.ActorAlign\.END;/);
