@@ -25,8 +25,9 @@
 /* Bottom-aligned with the hero figure; 5 px = its descent (8) minus the detail's (3) at 30/12 px. */
 .matci-metric-detail { color: #a1a1a6; font-size: 9pt; font-feature-settings: "tnum"; padding-bottom: 5px; }
 .matci-meter-track { border-radius: 3px; background-color: rgba(255, 255, 255, 0.12); }
-.matci-meter-fill { border-radius: 3px; background-color: #a1a1a6; }
+.matci-meter-fill { border-radius: 3px; background-color: #30d158; }
 .matci-meter-warning { background-color: #ff9f0a; }
+.matci-meter-critical { background-color: #ff453a; }
 .matci-meter-rest { background-color: transparent; }
 .matci-scroll { min-height: 0px; max-height: 260px; }
 .matci-scroll StScrollBar { -slider-width: 2px; }

@@ -578,8 +578,11 @@ export default class Matci extends Extension {
             const ratio = Number.isFinite(memory?.used_ratio) ? Math.max(0, Math.min(1, memory.used_ratio)) : 0;
             // Orange only with the pressure warning beside it; high usage alone is often cache.
             const pressured = Number.isFinite(psi) && psi >= 1;
+            // Red when the stall is sustained or almost nothing is left; green otherwise.
+            const critical = (Number.isFinite(psi) && psi >= 10) || (Number.isFinite(memory?.used_ratio) && memory.used_ratio >= 0.95);
             const meter = new St.BoxLayout({style_class: 'matci-meter-track', x_expand: true, height: 4, visible: Boolean(memory)});
-            meter.add_child(new St.Widget({style_class: pressured ? 'matci-meter-fill matci-meter-warning' : 'matci-meter-fill',
+            meter.add_child(new St.Widget({style_class: critical ? 'matci-meter-fill matci-meter-critical' :
+                pressured ? 'matci-meter-fill matci-meter-warning' : 'matci-meter-fill',
                 width: Math.round(innerWidth * ratio), height: 4}));
             meter.add_child(new St.Widget({style_class: 'matci-meter-rest', x_expand: true, height: 4}));
             this._root.add_child(meter);
