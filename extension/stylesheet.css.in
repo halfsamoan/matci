@@ -3,8 +3,8 @@
     background-color: transparent;
     color: {{color.labelPrimary}};
     border-radius: 0;
-    padding: 6px 14px 14px;
-    spacing: {{spacing.sm}}px;
+    padding: 10px 16px 12px;
+    spacing: 6px;
     box-shadow: none;
 }
 .matci-notch StLabel, .matci-notch StButton, .matci-panel-status StLabel { font-family: '{{typography.family}}'; }

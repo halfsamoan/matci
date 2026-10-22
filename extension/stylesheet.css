@@ -3,8 +3,8 @@
     background-color: transparent;
     color: #ffffff;
     border-radius: 0;
-    padding: 6px 14px 14px;
-    spacing: 8px;
+    padding: 10px 16px 12px;
+    spacing: 6px;
     box-shadow: none;
 }
 .matci-notch StLabel, .matci-notch StButton, .matci-panel-status StLabel { font-family: 'Pretendard'; }

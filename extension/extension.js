@@ -29,7 +29,7 @@ const metricKind = kind => ({pss: 'PSS 비례 배분 기준', rss: 'RSS 상주 �
     mixed: 'PSS 기준, 일부 RSS 포함이라 실제보다 클 수 있음'})[kind] ?? '기준 미확인';
 // Must match .matci-notch padding in stylesheet.css.in. The header row centres the title on the
 // 28 px tools, so a small top pad keeps the first glyphs right under the panel.
-const PAD_TOP = 6, PAD_SIDE = 14, PAD_BOTTOM = 14;
+const PAD_TOP = 10, PAD_SIDE = 16, PAD_BOTTOM = 12;
 const percent = n => Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
 const hardwareText = hardware => `CPU 온도 ${Number.isFinite(hardware?.cpu_temperature_c) ?
     `${Math.round(hardware.cpu_temperature_c)}°C` : '—'} · 팬 속도 ${Number.isFinite(hardware?.cpu_fan_rpm) ?
@@ -530,6 +530,11 @@ export default class Matci extends Extension {
             const brand = new St.BoxLayout({style_class: 'matci-brand', x_expand: true, reactive: true, can_focus: true});
             this._brand = brand;
             this._tagRole(brand, 'anchor');
+            // The title row is the island's own surface: a click on it folds the card.
+            brand.connect('button-release-event', () => {
+                this._collapse(true);
+                return Clutter.EVENT_STOP;
+            });
             // A dead worker waiting for its restart reads as disconnected, never as "connecting".
             const disconnected = !this._worker && !this._versionMismatch;
             const stateText = demo ? '시연' : this._versionMismatch ? '업데이트 필요' : disconnected ? '연결 끊김' :
