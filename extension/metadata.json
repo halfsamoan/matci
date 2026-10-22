@@ -2,7 +2,9 @@
   "uuid": "matci@local",
   "name": "matci",
   "description": "Panel-first system memory overview and explicit normal window-close requests.",
-  "shell-version": ["50"],
+  "shell-version": [
+    "50"
+  ],
   "settings-schema": "org.gnome.shell.extensions.matci",
-  "version": 23
+  "version": 24
 }
