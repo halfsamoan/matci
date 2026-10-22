@@ -12,7 +12,6 @@ import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
 import {DockParticipant, easeOnCurve} from './notchDock.js';
 import {isActorWithin} from './dockModel.js';
-import {createNotchSurface} from './notchSurface.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
 import {protection, appView, appMetrics, attachMembers, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
@@ -91,10 +90,8 @@ export default class Matci extends Extension {
         this._root = new St.BoxLayout({vertical: true, reactive: false, can_focus: false,
             style_class: 'matci-notch', clip_to_allocation: true,
             accessible_name: 'matci 메모리 노치'});
-        this._surface = createNotchSurface(this._root);
         // Tab/arrow navigation inside the notch; St drops the group when the root is destroyed.
         global.focus_manager.add_group(this._root);
-        Main.layoutManager.addChrome(this._surface, {affectsStruts: false, trackFullscreen: false});
         const staleIndicator = Main.panel.statusArea[this.uuid];
         if (staleIndicator) {
             Main.panel.statusArea[this.uuid] = null;
@@ -126,7 +123,7 @@ export default class Matci extends Extension {
             return Clutter.EVENT_STOP;
         });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
-        this._dock = new DockParticipant({id: this.uuid, actor: this._surface, monitor: () => this._monitor(), order: 1,
+        this._dock = new DockParticipant({id: this.uuid, content: this._root, monitor: () => this._monitor(), order: 1,
             triggerActor: () => this._indicator,
             onShellShutdown: () => this._beginShellShutdown(),
             onOutside: () => this._collapse(false, {keepReview: true}),
@@ -1110,9 +1107,8 @@ export default class Matci extends Extension {
         }
         this._signals = [];
         this._dock?.destroy(); this._dock = null;
-        if (!this._shellEnding && this._surface) {
-            try { Main.layoutManager.removeChrome(this._surface); } catch (_error) {}
-            try { this._surface.destroy(); } catch (_error) {}
+        if (!this._shellEnding && this._root) {
+            try { this._root.destroy(); } catch (_error) {}
         }
         if (!this._shellEnding && this._indicator) {
             try {
@@ -1120,7 +1116,7 @@ export default class Matci extends Extension {
                 this._indicator.destroy();
             } catch (_error) { /* Shell already owns actor disposal */ }
         }
-        this._surface = this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = this._ramIcon = null;
+        this._root = this._indicator = this._indicatorIcon = this._indicatorLabel = this._ramIcon = null;
         // Destroyed row/control wrappers must not outlive the disabled extension (e.g. lock screen).
         this._rowButtons?.clear(); this._roleButtons?.clear(); this._scrollView = null;
         this._settings = this._interface = this._actions = null;

@@ -1,28 +1,38 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {DOCK_PROTOCOL, buttonNumber, layoutNotches, canClaim, isActorWithin, isPointWithinActor,
+import {DOCK_PROTOCOL, SNAP, buttonNumber, layoutIsland, canClaim, isActorWithin, isPointWithinActor,
     classifyOutsideSurface, dispatchOutsideDismiss, notchGeometry, pointInNotchShape} from '../extension/dockModel.js';
 
 const monitor = {x: 100, y: 0, width: 1280, panelHeight: 32};
-test('two islands form one centered group below panel without overlap', () => {
-    const positions = layoutNotches([{id: 'sports', width: 360, height: 46, order: 0},
-        {id: 'memory', width: 220, height: 46, order: 1}], monitor);
-    assert.equal(positions.length, 2);
-    assert.equal(positions[0].y, 32);
-    assert.equal(positions[1].x - positions[0].x - positions[0].width, 6);
-    assert.equal(positions[0].x + (360 + 220 + 6) / 2, 740);
+test('compact modules share one island row below the panel', () => {
+    const {island, slots} = layoutIsland([{id: 'sports', width: 200, height: 36, order: 0},
+        {id: 'spotify', width: 56, height: 36, order: 2}], monitor);
+    assert.deepEqual(island, {x: 606, y: 32, width: 268, height: 36, expanded: false, ownerId: null});
+    assert.deepEqual(slots.get('sports'), {x: 0, width: 200, shown: true});
+    assert.deepEqual(slots.get('spotify'), {x: 212, width: 56, shown: true});
+    assert.equal(SNAP, 8);
+    assert.equal(layoutIsland([{id: 'a', width: 61, height: 36}], monitor).slots.get('a').width, 64);
 });
-test('narrow display preserves active participant and falls back companion', () => {
-    const positions = layoutNotches([{id: 'sports', width: 500, height: 250, order: 0, active: true},
-        {id: 'memory', width: 220, height: 46, order: 1}], {...monitor, width: 600});
-    assert.equal(positions.find(x => x.id === 'memory').fallback, true);
-    assert.equal(positions.find(x => x.id === 'sports').fallback, false);
+test('an expanded owner has the island to itself', () => {
+    const {island, slots} = layoutIsland([{id: 'sports', width: 200, height: 36, order: 0},
+        {id: 'memory', width: 368, height: 240, order: 1, expanded: true, active: true}], monitor);
+    assert.deepEqual(island, {x: 556, y: 32, width: 368, height: 240, expanded: true, ownerId: 'memory'});
+    assert.equal(slots.get('sports').shown, false);
+    assert.equal(slots.get('memory').shown, true);
 });
-test('single notch recenters and clamps to monitor', () => {
-    const [position] = layoutNotches([{id: 'memory', width: 500, height: 250}], {...monitor, width: 390});
-    assert.equal(position.width, 366);
-    assert.equal(position.x, 112);
+test('narrow display preserves active participant and hides the companion', () => {
+    const {island, slots} = layoutIsland([{id: 'sports', width: 500, height: 36, order: 0},
+        {id: 'memory', width: 220, height: 36, order: 1, active: true}], {...monitor, width: 600});
+    assert.equal(island.width, 224);
+    assert.equal(slots.get('sports').shown, false);
+    assert.equal(slots.get('memory').shown, true);
+});
+test('single expanded notch recenters and clamps to monitor', () => {
+    const {island} = layoutIsland([{id: 'memory', width: 500, height: 250, expanded: true}], {...monitor, width: 390});
+    assert.equal(island.width, 366);
+    assert.equal(island.x, 112);
+    assert.equal(layoutIsland([], monitor).island, null);
 });
 test('manual review is not interrupted by automatic events', () => {
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 80), false);
@@ -30,8 +40,16 @@ test('manual review is not interrupted by automatic events', () => {
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 
+test('the island draws the only slab; matci hands over its content tree', () => {
+    const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /createNotchSurface|addChrome\(|removeChrome\(/);
+    assert.match(source, /new DockParticipant\(\{id: this\.uuid, content: this\._root,/);
+});
+
 test('shared dock protocol and manual tie use last-toggle ownership', () => {
-    assert.equal(DOCK_PROTOCOL, 6);
+    assert.equal(DOCK_PROTOCOL, 7);
+    assert.equal(canClaim({id: 'sports', priority: 80}, 'kakao', 60), false);
+    assert.equal(canClaim({id: 'kakao', priority: 60}, 'spotify', 40), false);
     assert.equal(canClaim({id: 'memory', priority: 100}, 'sports', 100), true);
 });
 
