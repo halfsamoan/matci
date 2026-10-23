@@ -128,7 +128,7 @@ export default class Matci extends Extension {
             onShellShutdown: () => this._beginShellShutdown(),
             onOutside: () => this._collapse(false, {keepReview: true}),
             onYield: () => this._collapse(false, {keepReview: true})});
-        // Global shortcut (numpad Delete/Decimal by default). The Shell grab keeps the key from apps.
+        // Global shortcut (numpad Add by default). The Shell grab keeps the key from apps.
         Main.wm.addKeybinding('matci-toggle-shortcut', this._settings, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
             Shell.ActionMode.NORMAL, toggle);
         this._actions = new CloseController({snapshot: () => this._snapshot,

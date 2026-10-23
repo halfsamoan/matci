@@ -168,7 +168,7 @@ test('numpad toggle shortcut is bound on enable and released on disable', () => 
     const schema = readFileSync(new URL('../extension/schemas/org.gnome.shell.extensions.matci.gschema.xml', import.meta.url), 'utf8');
     assert.match(source, /addKeybinding\('matci-toggle-shortcut'/);
     assert.match(source, /disable\(\) \{\n\s+this\._enabled = false;\n\s+Main\.wm\.removeKeybinding\('matci-toggle-shortcut'\);/);
-    assert.ok(schema.includes(`<key name="matci-toggle-shortcut" type="as"><default>['KP_Delete', 'KP_Decimal']</default>`));
+    assert.ok(schema.includes(`<key name="matci-toggle-shortcut" type="as"><default>['KP_Add']</default>`));
 });
 
 test('the notch tree is styled before it is measured', () => {

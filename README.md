@@ -42,7 +42,7 @@ gnome-extensions enable matci@local
 gnome-extensions prefs matci@local
 ```
 
-Open the overlay from the panel RAM item or numpad `Del`.
+Open the overlay from the panel RAM item or numpad `+`.
 
 ## Validation status
 
