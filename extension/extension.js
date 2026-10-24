@@ -10,8 +10,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 import Shell from 'gi://Shell';
 import Pango from 'gi://Pango';
-import {DockParticipant, easeOnCurve} from './notchDock.js';
-import {isActorWithin} from './dockModel.js';
+import {DockParticipant, easeOnCurve, closeEase, afterDispatch} from './notchDock.js';
+import {isActorWithin, CLOSE_OUT_MS, CONTENT_SHRINK_TO} from './dockModel.js';
 import {DESIGN} from './designTokens.js';
 import {CloseController} from './actions.js';
 import {protection, appView, appMetrics, attachMembers, lowAccuracy, healthText, keyOf, interactionAge, takeLines} from './policy.js';
@@ -149,7 +149,8 @@ export default class Matci extends Extension {
         this._connect(global.stage, 'key-press-event', (_stage, event) => {
             if (event.get_key_symbol() !== Clutter.KEY_Escape || !isActorWithin(global.stage.get_key_focus(), this._root))
                 return Clutter.EVENT_PROPAGATE;
-            this._collapse(true);
+            // The close runs after Clutter's event dispatch, like the global shortcut's (notchDock.afterDispatch).
+            afterDispatch(this._dock.dock, () => this._collapse(true));
             return Clutter.EVENT_STOP;
         });
         this._connect(Main.layoutManager, 'monitors-changed', () => this._visibility());
@@ -474,7 +475,8 @@ export default class Matci extends Extension {
             this._rowButtons.clear();
             this._roleButtons.clear();
             this._scrollView = null;
-            for (const child of this._root.get_children()) {
+            const children = this._root.get_children();
+            for (const child of children) {
                 const descendants = [child];
                 while (descendants.length) {
                     const actor = descendants.pop();
@@ -482,13 +484,19 @@ export default class Matci extends Extension {
                     actor.can_focus = false;
                     descendants.push(...actor.get_children());
                 }
-                // One short fade on the slab's curve; the retracting slab clips the rest.
-                easeOnCurve(child, {opacity: 0, duration: DESIGN.motion.micro});
             }
             this._contentHeight = 1;
             this._updatePanel();
             this._visibility();
-            this._closingTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DESIGN.motion.collapse, () => {
+            // The card fades and shrinks towards the panel edge over the first part of the retract while
+            // the slab clips it; a slab retracting out of sight fades the content itself (notchDock).
+            if (this._dock.state.visible) {
+                for (const child of children) {
+                    child.set_pivot_point(0.5, 0);
+                    closeEase(child, {opacity: 0, scale_x: CONTENT_SHRINK_TO, scale_y: CONTENT_SHRINK_TO});
+                }
+            }
+            this._closingTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CLOSE_OUT_MS, () => {
                 this._closingTimer = 0;
                 if (this._enabled && !this._expanded && this._root) {
                     for (const child of this._root.get_children()) child.destroy();
@@ -532,7 +540,7 @@ export default class Matci extends Extension {
             this._tagRole(brand, 'anchor');
             // The title row is the island's own surface: a click on it folds the card.
             brand.connect('button-release-event', () => {
-                this._collapse(true);
+                afterDispatch(this._dock.dock, () => this._collapse(true));
                 return Clutter.EVENT_STOP;
             });
             // A dead worker waiting for its restart reads as disconnected, never as "connecting".

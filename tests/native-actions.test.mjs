@@ -33,7 +33,7 @@ test('automatic suggestion timeout stays open for a selected app', () => {
     assert.match(extensionSource, /select\.connect\('clicked', \(\) => \{\n\s+if \(reason \|\| !detailReady \|\| this\._detailLoading \|\| this\._detailPaused\) return;\n\s+if \(this\._eventTimer\) \{ GLib\.source_remove\(this\._eventTimer\); this\._eventTimer = 0; \}/);
 });
 test('closing releases notch focus back to the prior application window', () => {
-    assert.match(extensionSource, /import \{isActorWithin\} from '\.\/dockModel\.js';/);
+    assert.match(extensionSource, /import \{isActorWithin, CLOSE_OUT_MS, CONTENT_SHRINK_TO\} from '\.\/dockModel\.js';/);
     assert.match(extensionSource, /_returnWindow = global\.display\.get_focus_window\(\)/);
     assert.match(extensionSource, /_releaseFocus\(\) \{[\s\S]*?global\.stage\.set_key_focus\(null\);[\s\S]*?win\.focus\(global\.get_current_time\(\)\)/);
     assert.match(extensionSource, /if \(manual && this\._dock\.state\.visible\) this\._focusPrimary\(\)/);
